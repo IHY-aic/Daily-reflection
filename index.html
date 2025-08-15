@@ -43,22 +43,22 @@
             <section id="reflection-form">
                 <h2>Today's Reflection</h2>
                 <form id="daily-reflection">
-                    <label for="q1">What did I do well today?</label>
-                    <textarea id="q1" rows="4" required></textarea>
+                    <label for="didWell">What did I do well today?</label>
+                    <textarea id="didWell" rows="4" required></textarea>
 
-                    <label for="q2">What did I do poorly today?</label>
-                    <textarea id="q2" rows="4" required></textarea>
+                    <label for="didPoorly">What did I do poorly today?</label>
+                    <textarea id="didPoorly" rows="4" required></textarea>
 
-                    <label for="q3">What will I improve tomorrow?</label>
-                    <textarea id="q3" rows="4" required></textarea>
+                    <label for="improveTomorrow">What will I improve tomorrow?</label>
+                    <textarea id="improveTomorrow" rows="4" required></textarea>
 
                     <button type="submit">Save Reflection</button>
                 </form>
+                <input type="date" id="calendar">
             </section>
 
             <section id="past-reflections">
                 <h2>Past Reflections</h2>
-                <input type="date" id="calendar">
                 <div id="reflections-list"></div>
             </section>
         </main>
