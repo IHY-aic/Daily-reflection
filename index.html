@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Reflection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="auth-container">
+        <h2>Login</h2>
+        <div id="login-buttons">
+            <button id="google-login">Login with Google</button>
+        </div>
+        <form id="email-password-login">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <p>Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
+    </div>
+
+    <div id="signup-container" style="display: none;">
+        <h2>Sign Up</h2>
+        <form id="email-password-signup">
+            <input type="email" id="signup-email" placeholder="Email" required>
+            <input type="password" id="signup-password" placeholder="Password" required>
+            <button type="submit">Sign Up</button>
+        </form>
+        <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+    </div>
+
+    <div id="app-container" style="display: none;">
+        <header>
+            <h1>Daily Reflection</h1>
+            <div id="user-info">
+                <p id="user-email"></p>
+                <button id="logout">Logout</button>
+            </div>
+        </header>
+
+        <main>
+            <section id="reflection-form">
+                <h2>Today's Reflection</h2>
+                <form id="daily-reflection">
+                    <label for="q1">What did I do well today?</label>
+                    <textarea id="q1" rows="4" required></textarea>
+
+                    <label for="q2">What did I do poorly today?</label>
+                    <textarea id="q2" rows="4" required></textarea>
+
+                    <label for="q3">What will I improve tomorrow?</label>
+                    <textarea id="q3" rows="4" required></textarea>
+
+                    <button type="submit">Save Reflection</button>
+                </form>
+            </section>
+
+            <section id="past-reflections">
+                <h2>Past Reflections</h2>
+                <input type="date" id="calendar">
+                <div id="reflections-list"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
