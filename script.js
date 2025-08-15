@@ -2,17 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
-  authDomain: "reflectionv1.firebaseapp.com",
-  projectId: "reflectionv1",
-  storageBucket: "reflectionv1.firebasestorage.app",
-  messagingSenderId: "932465743002",
-  appId: "1:932465743002:web:7e27fddd9636159a3bfb23",
-  measurementId: "G-NQ80R8XTFD"
-};
+import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
