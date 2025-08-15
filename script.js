@@ -2,17 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
-  authDomain: "reflectionv1.firebaseapp.com",
-  projectId: "reflectionv1",
-  storageBucket: "reflectionv1.firebasestorage.app",
-  messagingSenderId: "932465743002",
-  appId: "1:932465743002:web:7e27fddd9636159a3bfb23",
-  measurementId: "G-NQ80R8XTFD"
-};
+import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -172,17 +162,23 @@ function setupReflectionsListener(date) {
 
     const q = query(
         collection(db, "reflections"),
-        where("userId", "==", user.uid),
-        where("createdAt", ">=", startTimestamp),
-        where("createdAt", "<=", endTimestamp)
+        where("userId", "==", user.uid)
     );
 
     unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
         reflectionsList.innerHTML = '';
-        if (querySnapshot.empty) {
+        const dayDocs = querySnapshot.docs
+            .filter(doc => {
+                const createdAt = doc.data().createdAt;
+                return createdAt.toMillis() >= startTimestamp.toMillis() &&
+                       createdAt.toMillis() <= endTimestamp.toMillis();
+            })
+            .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis());
+
+        if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
-            querySnapshot.docs.sort((a, b) => b.data().createdAt - a.data().createdAt).forEach((doc) => {
+            dayDocs.forEach((doc) => {
                 const reflection = doc.data();
                 const reflectionEl = document.createElement('div');
                 const createdAtDate = reflection.createdAt.toDate();
@@ -230,10 +226,12 @@ reflectionForm.addEventListener('submit', (e) => {
             createdAt: Timestamp.now()
         }).then(() => {
             console.log("Reflection saved!");
+            alert('Reflection saved!');
             reflectionForm.reset();
             // No need to manually reload, onSnapshot will do it automatically
         }).catch((error) => {
             console.error("Error adding document: ", error);
+            alert('Failed to save reflection.');
         });
     }
 });
