@@ -22,6 +22,9 @@
 
     <div id="signup-container" style="display: none;">
         <h2>Sign Up</h2>
+        <div id="signup-buttons">
+            <button id="google-signup">Sign up with Google</button>
+        </div>
         <form id="email-password-signup">
             <input type="email" id="signup-email" placeholder="Email" required>
             <input type="password" id="signup-password" placeholder="Password" required>
@@ -54,11 +57,14 @@
 
                     <button type="submit">Save Reflection</button>
                 </form>
-                <input type="date" id="calendar">
             </section>
 
             <section id="past-reflections">
                 <h2>Past Reflections</h2>
+                <div id="reflections-controls">
+                    <input type="date" id="calendar">
+                    <button id="show-all">Show All</button>
+                </div>
                 <div id="reflections-list"></div>
             </section>
         </main>
