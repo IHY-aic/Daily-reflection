@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, query, where, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -33,6 +33,7 @@ const userEmailElement = document.getElementById('user-email');
 const calendarInput = document.getElementById('calendar');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
+const aiFeedback = document.getElementById('ai-feedback');
 
 let viewAll = false;
 
@@ -255,7 +256,10 @@ function renderReflectionDoc(doc) {
     const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
     const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
 
+    reflectionEl.classList.add('reflection-card');
     reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${doc.id}" title="Delete">&times;</button>
+
         <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
         <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
         <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
@@ -290,20 +294,45 @@ reflectionForm.addEventListener('submit', (e) => {
     const user = auth.currentUser;
 
     if (user) {
-        addDoc(collection(db, "reflections"), {
-            userId: user.uid,
-            didWell,
-            didPoorly,
-            improveTomorrow,
-            createdAt: Timestamp.now()
-        }).then(() => {
-            console.log("Reflection saved!");
-            alert('Reflection saved!');
-            reflectionForm.reset();
-            // No need to manually reload, onSnapshot will do it automatically
-        }).catch((error) => {
-            console.error("Error adding document: ", error);
-            alert('Failed to save reflection.');
-        });
+            addDoc(collection(db, "reflections"), {
+                userId: user.uid,
+                didWell,
+                didPoorly,
+                improveTomorrow,
+                createdAt: Timestamp.now()
+            }).then(() => {
+                console.log("Reflection saved!");
+                reflectionForm.reset();
+                showFeedback(didWell, didPoorly, improveTomorrow);
+                // No need to manually reload, onSnapshot will do it automatically
+            }).catch((error) => {
+                console.error("Error adding document: ", error);
+                alert('Failed to save reflection.');
+            });
+        }
+});
+
+reflectionsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('delete-reflection')) {
+        const id = e.target.dataset.id;
+        if (confirm('Delete this reflection?')) {
+            try {
+                await deleteDoc(doc(db, 'reflections', id));
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete reflection.');
+            }
+        }
     }
 });
+
+function showFeedback(didWell, didPoorly, improveTomorrow) {
+    aiFeedback.innerHTML = `
+        <h3>AI Feedback</h3>
+        <p><strong>Did well:</strong> ${didWell}</p>
+        <p><strong>Did poorly:</strong> ${didPoorly}</p>
+        <p><strong>Improve tomorrow:</strong> ${improveTomorrow}</p>
+    `;
+    aiFeedback.style.display = 'block';
+    aiFeedback.scrollIntoView({ behavior: 'smooth' });
+}
