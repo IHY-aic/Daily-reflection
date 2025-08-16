@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -40,6 +40,9 @@ const showAllButton = document.getElementById('show-all');
 const downloadButton = document.getElementById('download-reflections');
 const downloadFormatSelect = document.getElementById('download-format');
 const paginationDiv = document.getElementById('pagination');
+const feedbackModal = document.getElementById('feedback-modal');
+const feedbackText = document.getElementById('feedback-text');
+const closeModalButton = document.getElementById('close-modal');
 
 // Gemini API Key injected via secret or taken from firebaseConfig.js
 const GEMINI_API_KEY =
@@ -53,6 +56,12 @@ let currentPage = 1;
 const perPage = 10;
 let selectedDate = new Date();
 let exportDocs = [];
+
+if (closeModalButton && feedbackModal) {
+    closeModalButton.addEventListener('click', () => {
+        feedbackModal.style.display = 'none';
+    });
+}
 
 // Fallback: if auth state never resolves, show login after timeout
 const authFallback = setTimeout(() => {
@@ -172,6 +181,24 @@ if (resetPasswordLink) {
     });
 }
 
+if (resetPasswordLink) {
+    resetPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Please enter your email address first.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Password reset email sent.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert(`Failed to send reset email: ${error.message}`);
+        }
+    });
+}
+
 // Logout
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
@@ -252,7 +279,6 @@ function setupReflectionsListener(date) {
     const user = auth.currentUser;
     if (!user || !reflectionsList || !paginationDiv) return;
 
-    // Unsubscribe from the old listener if it exists
     if (unsubscribeFromReflections) {
         unsubscribeFromReflections();
     }
@@ -260,26 +286,26 @@ function setupReflectionsListener(date) {
     reflectionsList.innerHTML = 'Loading...';
     paginationDiv.innerHTML = '';
 
-    // Calculate start and end of the day
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
-
     const startTimestamp = Timestamp.fromDate(startOfDay);
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
-    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+    const baseQuery = query(
+        collection(db, 'reflections'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+    );
 
-    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(baseQuery, (snap) => {
         reflectionsList.innerHTML = '';
-        const dayDocs = querySnapshot.docs
-            .filter((docSnap) => {
-                const createdAt = docSnap.data().createdAt;
-                const millis = getMillis(createdAt);
-                return millis >= startTimestamp.toMillis() && millis <= endTimestamp.toMillis();
-            })
-            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        const dayDocs = snap.docs.filter((docSnap) => {
+            const createdAt = docSnap.data().createdAt;
+            const millis = getMillis(createdAt);
+            return millis >= startTimestamp.toMillis() && millis <= endTimestamp.toMillis();
+        });
         exportDocs = dayDocs;
         if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
@@ -287,7 +313,7 @@ function setupReflectionsListener(date) {
             dayDocs.forEach(renderReflectionDoc);
         }
     }, (error) => {
-        console.error("Error with reflections listener: ", error);
+        console.error('Error with reflections listener: ', error);
         reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
     });
 }
@@ -305,7 +331,83 @@ function setupAllReflectionsListener() {
 
     reflectionsList.innerHTML = 'Loading...';
 
-    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+    const baseQuery = query(
+        collection(db, 'reflections'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+    );
+
+    unsubscribeFromReflections = onSnapshot(baseQuery, (snap) => {
+        allReflections = snap.docs;
+        exportDocs = allReflections;
+        if (allReflections.length === 0) {
+            reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
+        } else {
+            renderPage(1);
+        }
+    }, (error) => {
+        console.error('Error with reflections listener: ', error);
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
+    });
+}
+
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
+    const reflectionEl = document.createElement('div');
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
+
+    reflectionEl.classList.add('reflection-card');
+    reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
+        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
+        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
+    `;
+    reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && datePickerContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            datePickerContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            datePickerContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
@@ -413,17 +515,21 @@ if (reflectionForm) {
 
         try {
             const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
-            await addDoc(collection(db, 'users', user.uid, 'reflections'), {
+            await addDoc(collection(db, 'reflections'), {
+                userId: user.uid,
                 didWell,
                 didPoorly,
                 improveTomorrow,
                 feedback,
                 createdAt: Timestamp.now()
             });
-            console.log("Reflection saved!");
+            console.log('Reflection saved!');
             reflectionForm.reset();
             localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
-            window.location.href = 'summary.html';
+            if (feedbackModal && feedbackText) {
+                feedbackText.textContent = feedback;
+                feedbackModal.style.display = 'flex';
+            }
         } catch (error) {
             console.error("Error adding document: ", error);
             alert(`Failed to save reflection: ${error.message}`);
@@ -442,7 +548,7 @@ if (reflectionsList) {
                     return;
                 }
                 try {
-                    await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
+                    await deleteDoc(doc(db, 'reflections', id));
                 } catch (error) {
                     console.error('Delete error:', error);
                     alert(`Failed to delete reflection: ${error.message}`);
@@ -532,6 +638,7 @@ function downloadReflectionsAsImages(data) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+
         const gradient = ctx.createLinearGradient(0, 0, width, height);
         gradient.addColorStop(0, '#f5f7fa');
         gradient.addColorStop(1, '#c3cfe2');

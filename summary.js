@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, getDocs, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig } from './firebaseConfig.js';
 
 const app = initializeApp(firebaseConfig);
@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-            const q = query(reflectionsRef, orderBy('createdAt', 'desc'), limit(1));
+            const reflectionsRef = collection(db, 'reflections');
+            const q = query(reflectionsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(1));
             const snap = await getDocs(q);
             if (!snap.empty) {
                 const d = snap.docs[0].data();
