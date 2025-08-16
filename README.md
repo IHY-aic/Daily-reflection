@@ -14,6 +14,8 @@ This simple web app lets you record daily reflections using Firebase Authenticat
 3. Replace the placeholder values in `firebaseConfig.js` with your Firebase project's configuration (API key, auth domain, etc.).
 4. Keep `firebaseConfig.js` out of version control – it is already listed in `.gitignore` so your credentials stay private.
 
+If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time.
+
 ## Running
 
 Open `index.html` in your browser via a local web server (e.g. `npx serve .`) and interact with the app.

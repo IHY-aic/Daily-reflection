@@ -1,8 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, query, where, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { firebaseConfig } from './firebaseConfig.js';
+import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -36,8 +36,11 @@ const showAllButton = document.getElementById('show-all');
 const downloadButton = document.getElementById('download-reflections');
 const paginationDiv = document.getElementById('pagination');
 
-// Gemini API Key injected via repository secret GEMINI_API_KEY
-const GEMINI_API_KEY = (window.GEMINI_API_KEY && window.GEMINI_API_KEY !== '{{ GEMINI_API_KEY }}') ? window.GEMINI_API_KEY : '';
+// Gemini API Key injected via secret or taken from firebaseConfig.js
+const GEMINI_API_KEY =
+    (window.GEMINI_API_KEY && window.GEMINI_API_KEY !== '{{ GEMINI_API_KEY }}')
+        ? window.GEMINI_API_KEY
+        : (geminiApiKey || '');
 
 let viewAll = false;
 let allReflections = [];
@@ -191,12 +194,9 @@ function setupReflectionsListener(date) {
     const startTimestamp = Timestamp.fromDate(startOfDay);
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
-    const q = query(
-        collection(db, "reflections"),
-        where("userId", "==", user.uid)
-    );
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
 
-    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
         const dayDocs = querySnapshot.docs
             .filter(doc => {
@@ -236,12 +236,9 @@ function setupAllReflectionsListener() {
 
     reflectionsList.innerHTML = 'Loading...';
 
-    const q = query(
-        collection(db, "reflections"),
-        where("userId", "==", user.uid)
-    );
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
 
-    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         allReflections = querySnapshot.docs
             .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
         if (allReflections.length === 0) {
@@ -323,8 +320,7 @@ reflectionForm.addEventListener('submit', (e) => {
     const user = auth.currentUser;
 
     if (user) {
-            addDoc(collection(db, "reflections"), {
-                userId: user.uid,
+            addDoc(collection(db, 'users', user.uid, 'reflections'), {
                 didWell,
                 didPoorly,
                 improveTomorrow,
@@ -346,8 +342,13 @@ reflectionsList.addEventListener('click', async (e) => {
     if (e.target.classList.contains('delete-reflection')) {
         const id = e.target.dataset.id;
         if (confirm('Delete this reflection?')) {
+            const user = auth.currentUser;
+            if (!user) {
+                alert('You must be logged in to delete reflections.');
+                return;
+            }
             try {
-                await deleteDoc(doc(db, 'reflections', id));
+                await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
             } catch (error) {
                 console.error('Delete error:', error);
                 alert(`Failed to delete reflection: ${error.message}`);
@@ -360,8 +361,8 @@ downloadButton.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-        const q = query(collection(db, 'reflections'), where('userId', '==', user.uid));
-        const snapshot = await getDocs(q);
+        const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+        const snapshot = await getDocs(reflectionsRef);
         const data = snapshot.docs.map(snap => {
             const d = snap.data();
             return {

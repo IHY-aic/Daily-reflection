@@ -10,3 +10,6 @@ export const firebaseConfig = {
   appId: "1:932465743002:web:7e27fddd9636159a3bfb23",
   measurementId: "G-NQ80R8XTFD"
 };
+
+// Add your Gemini API key here for local development if not injected at runtime
+export const geminiApiKey = '';
