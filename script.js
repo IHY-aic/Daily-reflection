@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, query, where, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";<<<<<<< codex/fix-login-functionality-dlaejm
+import { getFirestore, collection, doc, addDoc, deleteDoc, query, where, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -33,11 +33,16 @@ const userEmailElement = document.getElementById('user-email');
 const calendarInput = document.getElementById('calendar');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
+const downloadButton = document.getElementById('download-reflections');
+const paginationDiv = document.getElementById('pagination');
 
 // Gemini API Key injected via repository secret GEMINI_API_KEY
 const GEMINI_API_KEY = window.GEMINI_API_KEY || '';
 
 let viewAll = false;
+let allReflections = [];
+let currentPage = 1;
+const perPage = 10;
 
 // Show/Hide signup form
 showSignupLink.addEventListener('click', (e) => {
@@ -175,6 +180,7 @@ function setupReflectionsListener(date) {
     }
 
     reflectionsList.innerHTML = 'Loading...';
+    paginationDiv.innerHTML = '';
 
     // Calculate start and end of the day
     const startOfDay = new Date(date);
@@ -236,14 +242,13 @@ function setupAllReflectionsListener() {
     );
 
     unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
-        reflectionsList.innerHTML = '';
-        const docs = querySnapshot.docs
+        allReflections = querySnapshot.docs
             .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
-
-        if (docs.length === 0) {
+        if (allReflections.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
         } else {
-            docs.forEach(renderReflectionDoc);
+            renderPage(1);
         }
     }, (error) => {
         console.error("Error with reflections listener: ", error);
@@ -251,8 +256,8 @@ function setupAllReflectionsListener() {
     });
 }
 
-function renderReflectionDoc(doc) {
-    const reflection = doc.data();
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
     const reflectionEl = document.createElement('div');
     const rawCreatedAt = reflection.createdAt;
     const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
@@ -260,13 +265,35 @@ function renderReflectionDoc(doc) {
 
     reflectionEl.classList.add('reflection-card');
     reflectionEl.innerHTML = `
-        <button class="delete-reflection" data-id="${doc.id}" title="Delete">&times;</button>
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
         <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
         <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
         <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
         <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
     `;
     reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
 }
 
 showAllButton.addEventListener('click', () => {
@@ -278,6 +305,7 @@ showAllButton.addEventListener('click', () => {
     } else {
         calendarInput.style.display = 'block';
         showAllButton.textContent = 'Show All';
+        paginationDiv.innerHTML = '';
         const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
         const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
         setupReflectionsListener(selectedDate);
@@ -325,6 +353,36 @@ reflectionsList.addEventListener('click', async (e) => {
                 alert('Failed to delete reflection.');
             }
         }
+    }
+});
+
+downloadButton.addEventListener('click', async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        const q = query(collection(db, 'reflections'), where('userId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(snap => {
+            const d = snap.data();
+            return {
+                didWell: d.didWell,
+                didPoorly: d.didPoorly,
+                improveTomorrow: d.improveTomorrow,
+                createdAt: new Date(getMillis(d.createdAt)).toISOString()
+            };
+        });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'reflections.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Download error:', error);
+        alert('Failed to download reflections.');
     }
 });
 

@@ -98,8 +98,15 @@ button:hover {
     margin-top: 30px;
 }
 
-#calendar {
+#reflections-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
+}
+
+#calendar {
+    margin-bottom: 0;
 }
 
 .reflection-card {
@@ -137,6 +144,21 @@ button:hover {
 
 .delete-reflection:hover {
     background-color: #c82333;
+}
+
+#pagination {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.page-btn {
+    margin: 0 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.page-btn.active {
+    background-color: #0056b3;
 }
 
 #ai-feedback {
