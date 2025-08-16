@@ -1,24 +1,22 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
-  authDomain: "reflectionv1.firebaseapp.com",
-  projectId: "reflectionv1",
-  storageBucket: "reflectionv1.firebasestorage.app",
-  messagingSenderId: "932465743002",
-  appId: "1:932465743002:web:7e27fddd9636159a3bfb23",
-  measurementId: "G-NQ80R8XTFD"
-};
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+
+// Handle Google redirect results
+getRedirectResult(auth).catch((error) => {
+    if (error) {
+        console.error('Google login error:', error);
+        alert(`Google login failed: ${error.message}`);
+    }
+});
 
 // UI Elements
 const authContainer = document.getElementById('auth-container');
@@ -31,6 +29,8 @@ const showSignupLink = document.getElementById('show-signup');
 const showLoginLink = document.getElementById('show-login');
 const logoutButton = document.getElementById('logout');
 const userEmailElement = document.getElementById('user-email');
+const calendarInput = document.getElementById('calendar');
+const reflectionsList = document.getElementById('reflections-list');
 
 // Show/Hide signup form
 showSignupLink.addEventListener('click', (e) => {
@@ -46,65 +46,47 @@ showLoginLink.addEventListener('click', (e) => {
 });
 
 // Google Login
-googleLoginButton.addEventListener('click', () => {
-    signInWithPopup(auth, provider)
-        .then((result) => {
-            // This gives you a Google Access Token. You can use it to access the Google API.
-            const credential = GoogleAuthProvider.credentialFromResult(result);
-            const token = credential.accessToken;
-            // The signed-in user info.
-            const user = result.user;
-            console.log('Logged in with Google:', user);
-        }).catch((error) => {
-            // Handle Errors here.
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            // The email of the user's account used.
-            const email = error.email;
-            // The AuthCredential type that was used.
-            const credential = GoogleAuthProvider.credentialFromError(error);
-            console.error('Google login error:', errorMessage);
-        });
+googleLoginButton.addEventListener('click', async () => {
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+            await signInWithRedirect(auth, provider);
+        } else {
+            console.error('Google login error:', error);
+            alert(`Google login failed: ${error.message}`);
+        }
+    }
 });
 
 // Email/Password Signup
-emailPasswordSignupForm.addEventListener('submit', (e) => {
+emailPasswordSignupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
 
-    createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            // Signed in
-            const user = userCredential.user;
-            console.log('Signed up:', user);
-        })
-        .catch((error) => {
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            console.error('Signup error:', errorMessage);
-            alert(`Signup failed: ${errorMessage}`);
-        });
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        console.log('Signed up:', auth.currentUser);
+    } catch (error) {
+        console.error('Signup error:', error.message);
+        alert(`Signup failed: ${error.message}`);
+    }
 });
 
 // Email/Password Login
-emailPasswordLoginForm.addEventListener('submit', (e) => {
+emailPasswordLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            // Signed in
-            const user = userCredential.user;
-            console.log('Logged in:', user);
-        })
-        .catch((error) => {
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            console.error('Login error:', errorMessage);
-            alert(`Login failed: ${errorMessage}`);
-        });
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log('Logged in:', auth.currentUser);
+    } catch (error) {
+        console.error('Login error:', error.message);
+        alert(`Login failed: ${error.message}`);
+    }
 });
 
 
@@ -146,9 +128,6 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-const calendarInput = document.getElementById('calendar');
-const reflectionsList = document.getElementById('reflections-list');
-
 // Set up a real-time listener for reflections
 function setupReflectionsListener(date) {
     const user = auth.currentUser;
@@ -172,26 +151,32 @@ function setupReflectionsListener(date) {
 
     const q = query(
         collection(db, "reflections"),
-        where("userId", "==", user.uid),
-        where("createdAt", ">=", startTimestamp),
-        where("createdAt", "<=", endTimestamp)
+        where("userId", "==", user.uid)
     );
 
     unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
         reflectionsList.innerHTML = '';
-        if (querySnapshot.empty) {
+        const dayDocs = querySnapshot.docs
+            .filter(doc => {
+                const createdAt = doc.data().createdAt;
+                return createdAt.toMillis() >= startTimestamp.toMillis() &&
+                       createdAt.toMillis() <= endTimestamp.toMillis();
+            })
+            .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis());
+
+        if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
-            querySnapshot.docs.sort((a, b) => b.data().createdAt - a.data().createdAt).forEach((doc) => {
+            dayDocs.forEach((doc) => {
                 const reflection = doc.data();
                 const reflectionEl = document.createElement('div');
                 const createdAtDate = reflection.createdAt.toDate();
 
                 reflectionEl.innerHTML = `
                     <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
-                    <p><strong>What did I do well today?</strong><br>${reflection.q1}</p>
-                    <p><strong>What did I do poorly today?</strong><br>${reflection.q2}</p>
-                    <p><strong>What will I improve tomorrow?</strong><br>${reflection.q3}</p>
+                    <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+                    <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+                    <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
                 `;
                 reflectionsList.appendChild(reflectionEl);
             });
@@ -216,24 +201,26 @@ const reflectionForm = document.getElementById('daily-reflection');
 reflectionForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const q1 = document.getElementById('q1').value;
-    const q2 = document.getElementById('q2').value;
-    const q3 = document.getElementById('q3').value;
+    const didWell = document.getElementById('didWell').value;
+    const didPoorly = document.getElementById('didPoorly').value;
+    const improveTomorrow = document.getElementById('improveTomorrow').value;
     const user = auth.currentUser;
 
     if (user) {
         addDoc(collection(db, "reflections"), {
             userId: user.uid,
-            q1: q1,
-            q2: q2,
-            q3: q3,
+            didWell,
+            didPoorly,
+            improveTomorrow,
             createdAt: Timestamp.now()
         }).then(() => {
             console.log("Reflection saved!");
+            alert('Reflection saved!');
             reflectionForm.reset();
             // No need to manually reload, onSnapshot will do it automatically
         }).catch((error) => {
             console.error("Error adding document: ", error);
+            alert('Failed to save reflection.');
         });
     }
 });
