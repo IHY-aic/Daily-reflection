@@ -33,11 +33,8 @@ const logoutButton = document.getElementById('logout');
 const resetPasswordLink = document.getElementById('reset-password');
 const changePasswordButton = document.getElementById('change-password');
 const userEmailElement = document.getElementById('user-email');
-const calendarContainer = document.getElementById('calendar-container');
-const calendarGrid = document.getElementById('calendar-grid');
-const monthLabel = document.getElementById('month-label');
-const prevMonthBtn = document.getElementById('prev-month');
-const nextMonthBtn = document.getElementById('next-month');
+const datePickerContainer = document.getElementById('date-picker-container');
+const datePicker = document.getElementById('date-picker');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
 const downloadButton = document.getElementById('download-reflections');
@@ -55,55 +52,10 @@ let allReflections = [];
 let currentPage = 1;
 const perPage = 10;
 let selectedDate = new Date();
-let displayedDate = new Date();
 
-function renderCalendar() {
-    if (!calendarGrid || !monthLabel) return;
-    calendarGrid.innerHTML = '';
-    const year = displayedDate.getFullYear();
-    const month = displayedDate.getMonth();
-    monthLabel.textContent = displayedDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    const firstDay = new Date(year, month, 1);
-    const startingDay = firstDay.getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const weekdayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    weekdayNames.forEach(w => {
-        const cell = document.createElement('div');
-        cell.textContent = w;
-        cell.className = 'weekday';
-        calendarGrid.appendChild(cell);
-    });
-    for (let i = 0; i < startingDay; i++) {
-        calendarGrid.appendChild(document.createElement('div'));
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-        const cell = document.createElement('div');
-        cell.textContent = day;
-        cell.className = 'calendar-day';
-        const cellDate = new Date(year, month, day);
-        if (selectedDate.toDateString() === cellDate.toDateString()) {
-            cell.classList.add('selected');
-        }
-        cell.addEventListener('click', () => {
-            selectedDate = cellDate;
-            renderCalendar();
-            if (!viewAll) setupReflectionsListener(selectedDate);
-        });
-        calendarGrid.appendChild(cell);
-    }
-}
-
-if (prevMonthBtn && nextMonthBtn) {
-    prevMonthBtn.addEventListener('click', () => {
-        displayedDate.setMonth(displayedDate.getMonth() - 1);
-        selectedDate = new Date(displayedDate);
-        renderCalendar();
-        if (!viewAll) setupReflectionsListener(selectedDate);
-    });
-    nextMonthBtn.addEventListener('click', () => {
-        displayedDate.setMonth(displayedDate.getMonth() + 1);
-        selectedDate = new Date(displayedDate);
-        renderCalendar();
+if (datePicker) {
+    datePicker.addEventListener('change', (e) => {
+        selectedDate = e.target.value ? new Date(e.target.value) : new Date();
         if (!viewAll) setupReflectionsListener(selectedDate);
     });
 }
@@ -253,12 +205,11 @@ onAuthStateChanged(auth, (user) => {
         appContainer.style.display = 'block';
         userEmailElement.textContent = user.email;
 
-        if (calendarGrid && showAllButton && reflectionsList) {
+        if (datePicker && showAllButton && reflectionsList) {
             viewAll = false;
             showAllButton.textContent = 'Show All';
             selectedDate = new Date();
-            displayedDate = new Date();
-            renderCalendar();
+            datePicker.value = selectedDate.toISOString().split('T')[0];
             setupReflectionsListener(selectedDate);
         }
 
@@ -374,6 +325,35 @@ function renderPage(page) {
     const pageDocs = allReflections.slice(start, start + perPage);
     pageDocs.forEach(renderReflectionDoc);
     renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && datePickerContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            datePickerContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            datePickerContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            setupReflectionsListener(selectedDate);
+        }
+    });
 }
 
 function renderPagination() {

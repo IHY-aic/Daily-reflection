@@ -142,41 +142,9 @@ button:hover {
     margin-bottom: 20px;
 }
 
-#calendar-container {
+#date-picker-container {
     width: 100%;
-}
-
-#month-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 10px;
-}
-
-#calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-    text-align: center;
-}
-
-.weekday {
-    font-weight: 600;
-}
-
-.calendar-day {
-    padding: 8px 0;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.calendar-day:hover {
-    background: #f0f0f0;
-}
-
-.calendar-day.selected {
-    background: #007bff;
-    color: #fff;
 }
 
 .reflection-card {

@@ -18,9 +18,10 @@ If you want to use Gemini-powered AI feedback during development, also set `gemi
 
 ## Running
 
-Serve the folder with a static server (e.g. `npx serve .`) and open `index.html` to enter a new reflection. Use `reflections.html` to browse past entries, paginate through older reflections, or download them in JSON, Markdown, HTML, CSV, plain‑text, or PNG image formats.
+Serve the folder with a static server (e.g. `npx serve .`) and open `index.html` to enter a new reflection. Use `reflections.html` to pick a day via the browser's date picker or show all entries with pagination, and download them in JSON, Markdown, HTML, CSV, plain‑text, or PNG image formats.
 
 Login supports Google or email/password. Users can reset a forgotten password from the login screen and change their password from the app header after signing in.
+
 ## Firebase console configuration
 
 To use authentication and Firestore in your own project:
