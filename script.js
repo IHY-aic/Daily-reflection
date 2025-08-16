@@ -53,6 +53,14 @@ let currentPage = 1;
 const perPage = 10;
 let selectedDate = new Date();
 
+// Fallback: if auth state never resolves, show login after timeout
+const authFallback = setTimeout(() => {
+    if (loadingContainer && loadingContainer.style.display !== 'none') {
+        loadingContainer.style.display = 'none';
+        if (authContainer) authContainer.style.display = 'block';
+    }
+}, 5000);
+
 if (datePicker) {
     datePicker.addEventListener('change', (e) => {
         selectedDate = e.target.value ? new Date(e.target.value) : new Date();
@@ -61,17 +69,21 @@ if (datePicker) {
 }
 
 // Show/Hide signup form
-showSignupLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    authContainer.style.display = 'none';
-    signupContainer.style.display = 'block';
-});
+if (showSignupLink) {
+    showSignupLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (authContainer) authContainer.style.display = 'none';
+        if (signupContainer) signupContainer.style.display = 'block';
+    });
+}
 
-showLoginLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    signupContainer.style.display = 'none';
-    authContainer.style.display = 'block';
-});
+if (showLoginLink) {
+    showLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (signupContainer) signupContainer.style.display = 'none';
+        if (authContainer) authContainer.style.display = 'block';
+    });
+}
 
 // Google Login/Signup
 async function handleGoogleAuth() {
@@ -100,40 +112,64 @@ function handleGoogleError(error) {
     }
 }
 
-googleLoginButton.addEventListener('click', handleGoogleAuth);
+if (googleLoginButton) {
+    googleLoginButton.addEventListener('click', handleGoogleAuth);
+}
 if (googleSignupButton) {
     googleSignupButton.addEventListener('click', handleGoogleAuth);
 }
 
 // Email/Password Signup
-emailPasswordSignupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('signup-email').value;
-    const password = document.getElementById('signup-password').value;
+if (emailPasswordSignupForm) {
+    emailPasswordSignupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
 
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        console.log('Signed up:', auth.currentUser);
-    } catch (error) {
-        console.error('Signup error:', error.message);
-        alert(`Signup failed: ${error.message}`);
-    }
-});
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            console.log('Signed up:', auth.currentUser);
+        } catch (error) {
+            console.error('Signup error:', error.message);
+            alert(`Signup failed: ${error.message}`);
+        }
+    });
+}
 
 // Email/Password Login
-emailPasswordLoginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+if (emailPasswordLoginForm) {
+    emailPasswordLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        console.log('Logged in:', auth.currentUser);
-    } catch (error) {
-        console.error('Login error:', error.message);
-        alert(`Login failed: ${error.message}`);
-    }
-});
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            console.log('Logged in:', auth.currentUser);
+        } catch (error) {
+            console.error('Login error:', error.message);
+            alert(`Login failed: ${error.message}`);
+        }
+    });
+}
+
+if (resetPasswordLink) {
+    resetPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Please enter your email address first.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Password reset email sent.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert(`Failed to send reset email: ${error.message}`);
+        }
+    });
+}
 
 if (resetPasswordLink) {
     resetPasswordLink.addEventListener('click', async (e) => {
@@ -155,13 +191,37 @@ if (resetPasswordLink) {
 
 
 // Logout
-logoutButton.addEventListener('click', () => {
-    signOut(auth).then(() => {
-        console.log('Logged out');
-    }).catch((error) => {
-        console.error('Logout error:', error);
+if (logoutButton) {
+    logoutButton.addEventListener('click', () => {
+        signOut(auth).then(() => {
+            console.log('Logged out');
+        }).catch((error) => {
+            console.error('Logout error:', error);
+        });
     });
-});
+}
+
+if (changePasswordButton) {
+    changePasswordButton.addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user || !user.email) {
+            alert('You must be logged in with an email account to change password.');
+            return;
+        }
+        const currentPassword = prompt('Enter current password');
+        const newPassword = prompt('Enter new password');
+        if (!currentPassword || !newPassword) return;
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+            alert('Password updated successfully.');
+        } catch (error) {
+            console.error('Change password error:', error);
+            alert(`Failed to change password: ${error.message}`);
+        }
+    });
+}
 
 if (changePasswordButton) {
     changePasswordButton.addEventListener('click', async () => {
@@ -197,6 +257,7 @@ function getMillis(timestamp) {
 }
 
 onAuthStateChanged(auth, (user) => {
+    clearTimeout(authFallback);
     if (loadingContainer) loadingContainer.style.display = 'none';
     if (user) {
         // User is signed in
@@ -354,19 +415,6 @@ if (showAllButton && datePickerContainer) {
             setupReflectionsListener(selectedDate);
         }
     });
-}
-
-function renderPagination() {
-    paginationDiv.innerHTML = '';
-    const totalPages = Math.ceil(allReflections.length / perPage);
-    if (totalPages <= 1) return;
-    for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-        btn.addEventListener('click', () => renderPage(i));
-        paginationDiv.appendChild(btn);
-    }
 }
 
 if (showAllButton && calendarContainer) {
