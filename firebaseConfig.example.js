@@ -9,3 +9,6 @@ export const firebaseConfig = {
   appId: "YOUR_APP_ID",
   measurementId: "YOUR_MEASUREMENT_ID"
 };
+
+// Optional: include your Gemini API key if you want to enable AI feedback locally
+export const geminiApiKey = 'YOUR_GEMINI_API_KEY';
