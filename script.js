@@ -214,7 +214,7 @@ function setupReflectionsListener(date) {
         }
     }, (error) => {
         console.error("Error with reflections listener: ", error);
-        reflectionsList.innerHTML = '<p>Error loading reflections.</p>';
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
     });
 }
 
@@ -249,7 +249,7 @@ function setupAllReflectionsListener() {
         }
     }, (error) => {
         console.error("Error with reflections listener: ", error);
-        reflectionsList.innerHTML = '<p>Error loading reflections.</p>';
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
     });
 }
 
@@ -340,7 +340,7 @@ reflectionForm.addEventListener('submit', async (e) => {
         window.location.href = 'summary.html';
     } catch (error) {
         console.error("Error adding document: ", error);
-        alert('Failed to save reflection.');
+        alert(`Failed to save reflection: ${error.message}`);
     }
 });
 
@@ -390,7 +390,7 @@ downloadButton.addEventListener('click', async () => {
         URL.revokeObjectURL(url);
     } catch (error) {
         console.error('Download error:', error);
-        alert('Failed to download reflections.');
+        alert(`Failed to download reflections: ${error.message}`);
     }
 });
 
@@ -415,12 +415,13 @@ async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
         if (!response.ok) {
             const errText = await response.text();
             console.error('Gemini API error:', errText);
-            return 'Failed to fetch AI feedback.';
+            return `Failed to fetch AI feedback: ${errText}`;
+
         }
         const data = await response.json();
         return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No feedback generated.';
     } catch (error) {
         console.error('Gemini API error:', error);
-        return 'Failed to fetch AI feedback.';
+        return `Failed to fetch AI feedback: ${error.message}`;
     }
 }
