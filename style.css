@@ -49,6 +49,26 @@ nav a {
     font-weight: 500;
 }
 
+.nav-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: #e0e0e0;
+    color: #333;
+    transition: background 0.3s, transform 0.2s;
+    text-decoration: none;
+}
+
+.nav-btn:hover {
+    background: #007bff;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.nav-btn.active {
+    background: #007bff;
+    color: #fff;
+}
+
 #user-info {
     display: flex;
     align-items: center;
@@ -122,8 +142,41 @@ button:hover {
     margin-bottom: 20px;
 }
 
-#calendar {
-    margin-bottom: 0;
+#calendar-container {
+    width: 100%;
+}
+
+#month-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+}
+
+.weekday {
+    font-weight: 600;
+}
+
+.calendar-day {
+    padding: 8px 0;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.calendar-day:hover {
+    background: #f0f0f0;
+}
+
+.calendar-day.selected {
+    background: #007bff;
+    color: #fff;
 }
 
 .reflection-card {
@@ -191,7 +244,7 @@ button:hover {
     color: #0056b3;
 }
 
-input[type="email"], input[type="password"], input[type="date"] {
+input[type="email"], input[type="password"] {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;

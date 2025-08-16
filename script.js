@@ -31,7 +31,11 @@ const showSignupLink = document.getElementById('show-signup');
 const showLoginLink = document.getElementById('show-login');
 const logoutButton = document.getElementById('logout');
 const userEmailElement = document.getElementById('user-email');
-const calendarInput = document.getElementById('calendar');
+const calendarContainer = document.getElementById('calendar-container');
+const calendarGrid = document.getElementById('calendar-grid');
+const monthLabel = document.getElementById('month-label');
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
 const downloadButton = document.getElementById('download-reflections');
@@ -48,6 +52,59 @@ let viewAll = false;
 let allReflections = [];
 let currentPage = 1;
 const perPage = 10;
+let selectedDate = new Date();
+let displayedDate = new Date();
+
+function renderCalendar() {
+    if (!calendarGrid || !monthLabel) return;
+    calendarGrid.innerHTML = '';
+    const year = displayedDate.getFullYear();
+    const month = displayedDate.getMonth();
+    monthLabel.textContent = displayedDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const firstDay = new Date(year, month, 1);
+    const startingDay = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const weekdayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    weekdayNames.forEach(w => {
+        const cell = document.createElement('div');
+        cell.textContent = w;
+        cell.className = 'weekday';
+        calendarGrid.appendChild(cell);
+    });
+    for (let i = 0; i < startingDay; i++) {
+        calendarGrid.appendChild(document.createElement('div'));
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        cell.textContent = day;
+        cell.className = 'calendar-day';
+        const cellDate = new Date(year, month, day);
+        if (selectedDate.toDateString() === cellDate.toDateString()) {
+            cell.classList.add('selected');
+        }
+        cell.addEventListener('click', () => {
+            selectedDate = cellDate;
+            renderCalendar();
+            if (!viewAll) setupReflectionsListener(selectedDate);
+        });
+        calendarGrid.appendChild(cell);
+    }
+}
+
+if (prevMonthBtn && nextMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+        displayedDate.setMonth(displayedDate.getMonth() - 1);
+        selectedDate = new Date(displayedDate);
+        renderCalendar();
+        if (!viewAll) setupReflectionsListener(selectedDate);
+    });
+    nextMonthBtn.addEventListener('click', () => {
+        displayedDate.setMonth(displayedDate.getMonth() + 1);
+        selectedDate = new Date(displayedDate);
+        renderCalendar();
+        if (!viewAll) setupReflectionsListener(selectedDate);
+    });
+}
 
 // Show/Hide signup form
 showSignupLink.addEventListener('click', (e) => {
@@ -154,15 +211,15 @@ onAuthStateChanged(auth, (user) => {
         appContainer.style.display = 'block';
         userEmailElement.textContent = user.email;
 
-        if (calendarInput && showAllButton && reflectionsList) {
-            // Set calendar to today and set up listener
+        if (calendarGrid && showAllButton && reflectionsList) {
             viewAll = false;
-            calendarInput.style.display = 'block';
             showAllButton.textContent = 'Show All';
-            const today = new Date();
-            calendarInput.value = today.toISOString().split('T')[0];
-            setupReflectionsListener(today);
+            selectedDate = new Date();
+            displayedDate = new Date();
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
         }
+
     } else {
         // User is signed out
         authContainer.style.display = 'block';
@@ -220,15 +277,7 @@ function setupReflectionsListener(date) {
     });
 }
 
-if (calendarInput) {
-    calendarInput.addEventListener('change', () => {
-        const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
-        const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-        if (selectedDate && !viewAll) {
-            setupReflectionsListener(selectedDate);
-        }
-    });
-}
+
 
 
 function setupAllReflectionsListener() {
@@ -238,7 +287,6 @@ function setupAllReflectionsListener() {
     if (unsubscribeFromReflections) {
         unsubscribeFromReflections();
     }
-
     reflectionsList.innerHTML = 'Loading...';
 
     const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
@@ -298,107 +346,22 @@ function renderPagination() {
     }
 }
 
-if (showAllButton && calendarInput) {
+if (showAllButton && calendarContainer) {
     showAllButton.addEventListener('click', () => {
         viewAll = !viewAll;
         if (viewAll) {
-            calendarInput.style.display = 'none';
+            calendarContainer.style.display = 'none';
             showAllButton.textContent = 'Show by Date';
             setupAllReflectionsListener();
         } else {
-            calendarInput.style.display = 'block';
+            calendarContainer.style.display = 'block';
             showAllButton.textContent = 'Show All';
             paginationDiv.innerHTML = '';
-            const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
-            const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            renderCalendar();
             setupReflectionsListener(selectedDate);
         }
     });
 }
-
-function setupAllReflectionsListener() {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    if (unsubscribeFromReflections) {
-        unsubscribeFromReflections();
-    }
-
-    reflectionsList.innerHTML = 'Loading...';
-
-    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-
-    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
-        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
-        if (allReflections.length === 0) {
-            reflectionsList.innerHTML = '<p>No reflections found.</p>';
-            paginationDiv.innerHTML = '';
-        } else {
-            renderPage(1);
-        }
-    }, (error) => {
-        console.error("Error with reflections listener: ", error);
-        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
-    });
-}
-
-function renderReflectionDoc(docSnap) {
-    const reflection = docSnap.data();
-    const reflectionEl = document.createElement('div');
-    const rawCreatedAt = reflection.createdAt;
-    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
-    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
-
-    reflectionEl.classList.add('reflection-card');
-    reflectionEl.innerHTML = `
-        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
-        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
-        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
-        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
-        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
-        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
-    `;
-    reflectionsList.appendChild(reflectionEl);
-}
-
-function renderPage(page) {
-    currentPage = page;
-    reflectionsList.innerHTML = '';
-    const start = (page - 1) * perPage;
-    const pageDocs = allReflections.slice(start, start + perPage);
-    pageDocs.forEach(renderReflectionDoc);
-    renderPagination();
-}
-
-function renderPagination() {
-    paginationDiv.innerHTML = '';
-    const totalPages = Math.ceil(allReflections.length / perPage);
-    if (totalPages <= 1) return;
-    for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-        btn.addEventListener('click', () => renderPage(i));
-        paginationDiv.appendChild(btn);
-    }
-}
-
-showAllButton.addEventListener('click', () => {
-    viewAll = !viewAll;
-    if (viewAll) {
-        calendarInput.style.display = 'none';
-        showAllButton.textContent = 'Show by Date';
-        setupAllReflectionsListener();
-    } else {
-        calendarInput.style.display = 'block';
-        showAllButton.textContent = 'Show All';
-        paginationDiv.innerHTML = '';
-        const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
-        const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-        setupReflectionsListener(selectedDate);
-    }
-});
-
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
@@ -473,6 +436,10 @@ if (downloadButton) {
                     createdAt: new Date(getMillis(d.createdAt)).toISOString()
                 };
             });
+            if (data.length === 0) {
+                alert('No reflections to download.');
+                return;
+            }
             const format = downloadFormatSelect ? downloadFormatSelect.value : 'json';
             const { content, mime, ext } = formatReflections(data, format);
             const blob = new Blob([content], { type: mime });

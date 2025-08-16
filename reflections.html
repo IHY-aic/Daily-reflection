@@ -39,8 +39,8 @@
         <header>
             <h1>Daily Reflection</h1>
             <nav>
-                <a href="index.html">New</a>
-                <a href="reflections.html">Past</a>
+                <a href="index.html" class="nav-btn">📝 New</a>
+                <a href="reflections.html" class="nav-btn active">📜 Past</a>
             </nav>
             <div id="user-info">
                 <p id="user-email"></p>
@@ -52,8 +52,15 @@
             <section id="past-reflections">
                 <h2>Past Reflections</h2>
                 <div id="reflections-controls">
-                    <input type="date" id="calendar">
-                    <button id="show-all">Show All</button>
+                    <div id="calendar-container">
+                        <div id="month-nav">
+                            <button id="prev-month" aria-label="Previous Month">&#9664;</button>
+                            <span id="month-label"></span>
+                            <button id="next-month" aria-label="Next Month">&#9654;</button>
+                        </div>
+                        <div id="calendar-grid"></div>
+                    </div>
+                    <button id="show-all" type="button">Show All</button>
                     <select id="download-format">
                         <option value="json">JSON</option>
                         <option value="markdown">Markdown</option>
@@ -61,7 +68,7 @@
                         <option value="csv">CSV</option>
                         <option value="txt">TXT</option>
                     </select>
-                    <button id="download-reflections">Download</button>
+                    <button id="download-reflections" type="button">Download</button>
                 </div>
                 <div id="reflections-list"></div>
                 <div id="pagination"></div>
