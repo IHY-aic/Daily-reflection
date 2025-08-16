@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Reflection</title>
+    <title>Past Reflections</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -39,8 +39,8 @@
         <header>
             <h1>Daily Reflection</h1>
             <nav>
-                <a href="index.html" class="nav-btn active">📝 New</a>
-                <a href="reflections.html" class="nav-btn">📜 Past</a>
+                <a href="index.html" class="nav-btn">📝 New</a>
+                <a href="reflections.html" class="nav-btn active">📜 Past</a>
             </nav>
             <div id="user-info">
                 <p id="user-email"></p>
@@ -49,20 +49,29 @@
         </header>
 
         <main>
-            <section id="reflection-form">
-                <h2>Today's Reflection</h2>
-                <form id="daily-reflection">
-                    <label for="didWell">What did I do well today?</label>
-                    <textarea id="didWell" rows="4" required></textarea>
-
-                    <label for="didPoorly">What did I do poorly today?</label>
-                    <textarea id="didPoorly" rows="4" required></textarea>
-
-                    <label for="improveTomorrow">What will I improve tomorrow?</label>
-                    <textarea id="improveTomorrow" rows="4" required></textarea>
-
-                    <button type="submit">Save Reflection</button>
-                </form>
+            <section id="past-reflections">
+                <h2>Past Reflections</h2>
+                <div id="reflections-controls">
+                    <div id="calendar-container">
+                        <div id="month-nav">
+                            <button id="prev-month" aria-label="Previous Month">&#9664;</button>
+                            <span id="month-label"></span>
+                            <button id="next-month" aria-label="Next Month">&#9654;</button>
+                        </div>
+                        <div id="calendar-grid"></div>
+                    </div>
+                    <button id="show-all" type="button">Show All</button>
+                    <select id="download-format">
+                        <option value="json">JSON</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="html">HTML</option>
+                        <option value="csv">CSV</option>
+                        <option value="txt">TXT</option>
+                    </select>
+                    <button id="download-reflections" type="button">Download</button>
+                </div>
+                <div id="reflections-list"></div>
+                <div id="pagination"></div>
             </section>
         </main>
     </div>
