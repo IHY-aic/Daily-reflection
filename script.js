@@ -356,6 +356,52 @@ if (showAllButton && datePickerContainer) {
     });
 }
 
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
+
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
