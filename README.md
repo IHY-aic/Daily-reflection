@@ -36,11 +36,14 @@ To use authentication and Firestore in your own project:
    service cloud.firestore {
      match /databases/{database}/documents {
        match /reflections/{reflectionId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+         // Users can only read, update, or delete their own reflections
+         allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+         // Users can only create reflections for themselves
+         allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
        }
      }
    }
    ```
 
-   This rule grants each user access only to their own reflections while keeping the collection flat for easy querying and pagination.
+   This rule grants each user access only to their own reflections. It uses `resource.data` to check the existing document on reads, updates, and deletes, and `request.resource.data` to validate the incoming document on creation. This ensures security while allowing users to save new reflections.
 
