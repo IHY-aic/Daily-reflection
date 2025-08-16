@@ -202,7 +202,7 @@ function setupReflectionsListener(date) {
         orderBy('createdAt', 'desc')
     );
 
-    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
         if (querySnapshot.empty) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';

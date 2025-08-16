@@ -16,6 +16,8 @@ This simple web app lets you record daily reflections using Firebase Authenticat
 
 If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time. Never commit the actual Gemini API key to Git.
 
+If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time.
+
 ## Running
 
 Open `index.html` in your browser via a local web server (e.g. `npx serve .`) and interact with the app.
