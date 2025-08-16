@@ -197,7 +197,7 @@ function setupReflectionsListener(date) {
     const reflectionsRef = collection(db, 'reflections');
     const q = query(reflectionsRef, where('userId', '==', user.uid));
 
-    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
         const dayDocs = querySnapshot.docs
             .filter((docSnap) => {
