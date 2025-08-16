@@ -259,6 +259,7 @@ function renderReflectionDoc(doc) {
     reflectionEl.classList.add('reflection-card');
     reflectionEl.innerHTML = `
         <button class="delete-reflection" data-id="${doc.id}" title="Delete">&times;</button>
+
         <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
         <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
         <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
