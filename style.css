@@ -40,6 +40,15 @@ header {
     margin-bottom: 30px;
 }
 
+nav {
+    display: flex;
+    gap: 15px;
+}
+
+nav a {
+    font-weight: 500;
+}
+
 #user-info {
     display: flex;
     align-items: center;

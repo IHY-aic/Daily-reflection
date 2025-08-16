@@ -8,6 +8,10 @@
 </head>
 <body>
     <div id="app-container">
+        <nav>
+            <a href="index.html">New</a>
+            <a href="reflections.html">Past</a>
+        </nav>
         <div class="reflection-card">
             <h2>Today's Reflection</h2>
             <p><strong>Did well:</strong> <span id="did-well"></span></p>
@@ -15,7 +19,6 @@
             <p><strong>Improve tomorrow:</strong> <span id="improve-tomorrow"></span></p>
         </div>
         <div id="ai-feedback"></div>
-        <a href="index.html">Back to reflections</a>
     </div>
     <!-- GEMINI_API_KEY is injected at deploy time -->
     <script>window.GEMINI_API_KEY = "{{ GEMINI_API_KEY }}";</script>

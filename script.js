@@ -35,6 +35,7 @@ const calendarInput = document.getElementById('calendar');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
 const downloadButton = document.getElementById('download-reflections');
+const downloadFormatSelect = document.getElementById('download-format');
 const paginationDiv = document.getElementById('pagination');
 
 // Gemini API Key injected via secret or taken from firebaseConfig.js
@@ -153,14 +154,15 @@ onAuthStateChanged(auth, (user) => {
         appContainer.style.display = 'block';
         userEmailElement.textContent = user.email;
 
-        // Set calendar to today and set up listener
-        viewAll = false;
-        calendarInput.style.display = 'block';
-        showAllButton.textContent = 'Show All';
-        const today = new Date();
-        calendarInput.value = today.toISOString().split('T')[0];
-        setupReflectionsListener(today);
-
+        if (calendarInput && showAllButton && reflectionsList) {
+            // Set calendar to today and set up listener
+            viewAll = false;
+            calendarInput.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            const today = new Date();
+            calendarInput.value = today.toISOString().split('T')[0];
+            setupReflectionsListener(today);
+        }
     } else {
         // User is signed out
         authContainer.style.display = 'block';
@@ -177,7 +179,7 @@ onAuthStateChanged(auth, (user) => {
 // Set up a real-time listener for reflections
 function setupReflectionsListener(date) {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user || !reflectionsList || !paginationDiv) return;
 
     // Unsubscribe from the old listener if it exists
     if (unsubscribeFromReflections) {
@@ -218,14 +220,101 @@ function setupReflectionsListener(date) {
     });
 }
 
-calendarInput.addEventListener('change', () => {
-    const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
-    const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-    if (selectedDate && !viewAll) {
-        setupReflectionsListener(selectedDate);
-    }
-});
+if (calendarInput) {
+    calendarInput.addEventListener('change', () => {
+        const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
+        const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        if (selectedDate && !viewAll) {
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 
+
+function setupAllReflectionsListener() {
+    const user = auth.currentUser;
+    if (!user || !reflectionsList) return;
+
+    if (unsubscribeFromReflections) {
+        unsubscribeFromReflections();
+    }
+
+    reflectionsList.innerHTML = 'Loading...';
+
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
+        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        if (allReflections.length === 0) {
+            reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
+        } else {
+            renderPage(1);
+        }
+    }, (error) => {
+        console.error("Error with reflections listener: ", error);
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
+    });
+}
+
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
+    const reflectionEl = document.createElement('div');
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
+
+    reflectionEl.classList.add('reflection-card');
+    reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
+        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
+        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
+    `;
+    reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && calendarInput) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarInput.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarInput.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
+            const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 
 function setupAllReflectionsListener() {
     const user = auth.currentUser;
@@ -312,87 +401,123 @@ showAllButton.addEventListener('click', () => {
 
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
-reflectionForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+if (reflectionForm) {
+    reflectionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const didWell = document.getElementById('didWell').value;
-    const didPoorly = document.getElementById('didPoorly').value;
-    const improveTomorrow = document.getElementById('improveTomorrow').value;
-    const user = auth.currentUser;
+        const didWell = document.getElementById('didWell').value;
+        const didPoorly = document.getElementById('didPoorly').value;
+        const improveTomorrow = document.getElementById('improveTomorrow').value;
+        const user = auth.currentUser;
 
-    if (!user) {
-        alert('You must be logged in to save reflections.');
-        return;
-    }
+        if (!user) {
+            alert('You must be logged in to save reflections.');
+            return;
+        }
 
-    try {
-        const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
-        await addDoc(collection(db, 'users', user.uid, 'reflections'), {
-            didWell,
-            didPoorly,
-            improveTomorrow,
-            feedback,
-            createdAt: Timestamp.now()
-        });
-        console.log("Reflection saved!");
-        reflectionForm.reset();
-        localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
-        window.location.href = 'summary.html';
-    } catch (error) {
-        console.error("Error adding document: ", error);
-        alert(`Failed to save reflection: ${error.message}`);
-    }
-});
+        try {
+            const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
+            await addDoc(collection(db, 'users', user.uid, 'reflections'), {
+                didWell,
+                didPoorly,
+                improveTomorrow,
+                feedback,
+                createdAt: Timestamp.now()
+            });
+            console.log("Reflection saved!");
+            reflectionForm.reset();
+            localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
+            window.location.href = 'summary.html';
+        } catch (error) {
+            console.error("Error adding document: ", error);
+            alert(`Failed to save reflection: ${error.message}`);
+        }
+    });
+}
 
-reflectionsList.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('delete-reflection')) {
-        const id = e.target.dataset.id;
-        if (confirm('Delete this reflection?')) {
-            const user = auth.currentUser;
-            if (!user) {
-                alert('You must be logged in to delete reflections.');
-                return;
-            }
-            try {
-                await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
-            } catch (error) {
-                console.error('Delete error:', error);
-                alert(`Failed to delete reflection: ${error.message}`);
+if (reflectionsList) {
+    reflectionsList.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-reflection')) {
+            const id = e.target.dataset.id;
+            if (confirm('Delete this reflection?')) {
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('You must be logged in to delete reflections.');
+                    return;
+                }
+                try {
+                    await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    alert(`Failed to delete reflection: ${error.message}`);
+                }
             }
         }
-    }
-});
+    });
+}
 
-downloadButton.addEventListener('click', async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-        const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-        const snapshot = await getDocs(reflectionsRef);
-        const data = snapshot.docs.map(snap => {
-            const d = snap.data();
-            return {
-                didWell: d.didWell,
-                didPoorly: d.didPoorly,
-                improveTomorrow: d.improveTomorrow,
-                feedback: d.feedback,
-                createdAt: new Date(getMillis(d.createdAt)).toISOString()
-            };
-        });
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'reflections.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Download error:', error);
-        alert(`Failed to download reflections: ${error.message}`);
+if (downloadButton) {
+    downloadButton.addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        try {
+            const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+            const snapshot = await getDocs(reflectionsRef);
+            const data = snapshot.docs.map(snap => {
+                const d = snap.data();
+                return {
+                    didWell: d.didWell,
+                    didPoorly: d.didPoorly,
+                    improveTomorrow: d.improveTomorrow,
+                    feedback: d.feedback,
+                    createdAt: new Date(getMillis(d.createdAt)).toISOString()
+                };
+            });
+            const format = downloadFormatSelect ? downloadFormatSelect.value : 'json';
+            const { content, mime, ext } = formatReflections(data, format);
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reflections.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Download error:', error);
+            alert(`Failed to download reflections: ${error.message}`);
+        }
+    });
+}
+
+function formatReflections(data, format) {
+    switch (format) {
+        case 'markdown': {
+            const content = data.map(r => `### ${r.createdAt}\n- **Did well:** ${r.didWell}\n- **Did poorly:** ${r.didPoorly}\n- **Improve tomorrow:** ${r.improveTomorrow}\n- **AI Feedback:** ${r.feedback || ''}`).join('\n\n');
+            return { content, mime: 'text/markdown', ext: 'md' };
+        }
+        case 'html': {
+            const content = `<!DOCTYPE html><html><body>` +
+                data.map(r => `<h3>${r.createdAt}</h3><p><strong>Did well:</strong> ${r.didWell}</p><p><strong>Did poorly:</strong> ${r.didPoorly}</p><p><strong>Improve tomorrow:</strong> ${r.improveTomorrow}</p><p><strong>AI Feedback:</strong> ${r.feedback || ''}</p>`).join('<hr>') +
+                `</body></html>`;
+            return { content, mime: 'text/html', ext: 'html' };
+        }
+        case 'csv': {
+            const headers = ['createdAt','didWell','didPoorly','improveTomorrow','feedback'];
+            const rows = data.map(r => headers.map(h => `"${(r[h] || '').replace(/"/g, '""')}"`).join(','));
+            const content = [headers.join(',')].concat(rows).join('\n');
+            return { content, mime: 'text/csv', ext: 'csv' };
+        }
+        case 'txt': {
+            const content = data.map(r => `${r.createdAt}\nDid well: ${r.didWell}\nDid poorly: ${r.didPoorly}\nImprove tomorrow: ${r.improveTomorrow}\nAI Feedback: ${r.feedback || ''}`).join('\n\n');
+            return { content, mime: 'text/plain', ext: 'txt' };
+        }
+        default: {
+            return { content: JSON.stringify(data, null, 2), mime: 'application/json', ext: 'json' };
+        }
     }
-});
+}
 
 async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
     if (!GEMINI_API_KEY) {
