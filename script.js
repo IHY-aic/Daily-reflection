@@ -10,6 +10,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+// Handle Google redirect results
+getRedirectResult(auth).catch((error) => {
+    if (error) {
+        console.error('Google login error:', error);
+        alert(`Google login failed: ${error.message}`);
+    }
+});
+
 // UI Elements
 const authContainer = document.getElementById('auth-container');
 const signupContainer = document.getElementById('signup-container');
@@ -52,43 +60,33 @@ googleLoginButton.addEventListener('click', async () => {
 });
 
 // Email/Password Signup
-emailPasswordSignupForm.addEventListener('submit', (e) => {
+emailPasswordSignupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
 
-    createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            // Signed in
-            const user = userCredential.user;
-            console.log('Signed up:', user);
-        })
-        .catch((error) => {
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            console.error('Signup error:', errorMessage);
-            alert(`Signup failed: ${errorMessage}`);
-        });
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        console.log('Signed up:', auth.currentUser);
+    } catch (error) {
+        console.error('Signup error:', error.message);
+        alert(`Signup failed: ${error.message}`);
+    }
 });
 
 // Email/Password Login
-emailPasswordLoginForm.addEventListener('submit', (e) => {
+emailPasswordLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            // Signed in
-            const user = userCredential.user;
-            console.log('Logged in:', user);
-        })
-        .catch((error) => {
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            console.error('Login error:', errorMessage);
-            alert(`Login failed: ${errorMessage}`);
-        });
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log('Logged in:', auth.currentUser);
+    } catch (error) {
+        console.error('Login error:', error.message);
+        alert(`Login failed: ${error.message}`);
+    }
 });
 
 
