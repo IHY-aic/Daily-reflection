@@ -42,5 +42,3 @@ To use authentication and Firestore in your own project:
    ```
 
    This structure scales well for many users because each user only listens to their own subcollection and rules naturally enforce per-user access. Using a different rule (for example, a top-level `reflections` collection) will cause Firestore to reject requests with "Missing or insufficient permissions" because the paths no longer match.
-
-   This structure scales well for many users because each user only listens to their own subcollection and rules naturally enforce per-user access. Using a different rule (for example, a top-level `reflections` collection) will cause Firestore to reject requests with "Missing or insufficient permissions" because the paths no longer match.
