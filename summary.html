@@ -17,6 +17,8 @@
         <div id="ai-feedback"></div>
         <a href="index.html">Back to reflections</a>
     </div>
+    <!-- GEMINI_API_KEY is injected at deploy time -->
+    <script>window.GEMINI_API_KEY = "{{ GEMINI_API_KEY }}";</script>
     <script type="module" src="summary.js"></script>
 </body>
 </html>

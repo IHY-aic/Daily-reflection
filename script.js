@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";<<<<<<< codex/fix-login-functionality-dlaejm
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, deleteDoc, query, where, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig } from './firebaseConfig.js';
 
@@ -37,7 +37,7 @@ const downloadButton = document.getElementById('download-reflections');
 const paginationDiv = document.getElementById('pagination');
 
 // Gemini API Key injected via repository secret GEMINI_API_KEY
-const GEMINI_API_KEY = window.GEMINI_API_KEY || '';
+const GEMINI_API_KEY = (window.GEMINI_API_KEY && window.GEMINI_API_KEY !== '{{ GEMINI_API_KEY }}') ? window.GEMINI_API_KEY : '';
 
 let viewAll = false;
 let allReflections = [];
@@ -350,7 +350,7 @@ reflectionsList.addEventListener('click', async (e) => {
                 await deleteDoc(doc(db, 'reflections', id));
             } catch (error) {
                 console.error('Delete error:', error);
-                alert('Failed to delete reflection.');
+                alert(`Failed to delete reflection: ${error.message}`);
             }
         }
     }
@@ -390,19 +390,27 @@ async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
     if (!GEMINI_API_KEY) {
         return 'No API key configured for AI feedback.';
     }
-    const prompt = `Today's reflection:\n- Did well: ${didWell}\n- Did poorly: ${didPoorly}\n- Improve tomorrow: ${improveTomorrow}\nProvide encouraging feedback.`;
+    const prompt = `You are an encouraging and concise reflection coach. Based on the user's answers:\n- Did well: ${didWell}\n- Did poorly: ${didPoorly}\n- Improve tomorrow: ${improveTomorrow}\nRespond with constructive feedback.`;
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [
-                    { parts: [{ text: prompt }] }
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }
                 ]
             })
         });
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error('Gemini API error:', errText);
+            return 'Failed to fetch AI feedback.';
+        }
         const data = await response.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No feedback generated.';
+        return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No feedback generated.';
     } catch (error) {
         console.error('Gemini API error:', error);
         return 'Failed to fetch AI feedback.';
