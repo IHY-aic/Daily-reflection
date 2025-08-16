@@ -194,20 +194,22 @@ function setupReflectionsListener(date) {
     const startTimestamp = Timestamp.fromDate(startOfDay);
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
-    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-    const q = query(
-        reflectionsRef,
-        where('createdAt', '>=', startTimestamp),
-        where('createdAt', '<=', endTimestamp),
-        orderBy('createdAt', 'desc')
-    );
+    const reflectionsRef = collection(db, 'reflections');
+    const q = query(reflectionsRef, where('userId', '==', user.uid));
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
-        if (querySnapshot.empty) {
+        const dayDocs = querySnapshot.docs
+            .filter((docSnap) => {
+                const createdAt = docSnap.data().createdAt;
+                const millis = getMillis(createdAt);
+                return millis >= startTimestamp.toMillis() && millis <= endTimestamp.toMillis();
+            })
+            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
-            querySnapshot.forEach(renderReflectionDoc);
+            dayDocs.forEach(renderReflectionDoc);
         }
     }, (error) => {
         console.error("Error with reflections listener: ", error);
@@ -234,11 +236,11 @@ function setupAllReflectionsListener() {
 
     reflectionsList.innerHTML = 'Loading...';
 
-    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-    const q = query(reflectionsRef, orderBy('createdAt', 'desc'));
+    const reflectionsRef = collection(db, 'reflections');
+    const q = query(reflectionsRef, where('userId', '==', user.uid));
 
     unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
-        allReflections = querySnapshot.docs;
+        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
         if (allReflections.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
             paginationDiv.innerHTML = '';
@@ -323,7 +325,8 @@ reflectionForm.addEventListener('submit', async (e) => {
     }
 
     try {
-        await addDoc(collection(db, 'users', user.uid, 'reflections'), {
+        await addDoc(collection(db, 'reflections'), {
+            userId: user.uid,
             didWell,
             didPoorly,
             improveTomorrow,
@@ -350,7 +353,7 @@ reflectionsList.addEventListener('click', async (e) => {
                 return;
             }
             try {
-                await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
+                await deleteDoc(doc(db, 'reflections', id));
             } catch (error) {
                 console.error('Delete error:', error);
                 alert(`Failed to delete reflection: ${error.message}`);
@@ -363,8 +366,9 @@ downloadButton.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-        const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-        const snapshot = await getDocs(reflectionsRef);
+        const reflectionsRef = collection(db, 'reflections');
+        const q = query(reflectionsRef, where('userId', '==', user.uid));
+        const snapshot = await getDocs(q);
         const data = snapshot.docs.map(snap => {
             const d = snap.data();
             return {

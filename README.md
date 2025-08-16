@@ -16,8 +16,6 @@ This simple web app lets you record daily reflections using Firebase Authenticat
 
 If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time. Never commit the actual Gemini API key to Git.
 
-If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time.
-
 ## Running
 
 Open `index.html` in your browser via a local web server (e.g. `npx serve .`) and interact with the app.
@@ -28,5 +26,4 @@ To use authentication and Firestore in your own project:
 
 1. In **Authentication → Sign-in method**, enable **Email/Password** and **Google** providers.
 2. In **Authentication → Settings**, add your site's domain (or `localhost` for local testing) to the **Authorized domains** list. Google login fails with `auth/unauthorized-domain` if the current host is missing here.
-3. In **Firestore Database**, create the database in production or test mode. Reflections are stored under `users/{uid}/reflections`, so ensure your security rules allow each user to read and write only their own documents.
-
+3. In **Firestore Database**, create the database in production or test mode. Reflections are stored in a top-level `reflections` collection with a `userId` field. Configure your security rules so each user can read and write only documents where `userId` matches their UID.
