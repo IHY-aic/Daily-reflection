@@ -36,11 +36,15 @@ To use authentication and Firestore in your own project:
    service cloud.firestore {
      match /databases/{database}/documents {
        match /reflections/{reflectionId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+         // Users can only read, update, or delete their own reflections
+         allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+         // Users can only create reflections for themselves
+         allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
        }
      }
    }
    ```
 
-   This rule grants each user access only to their own reflections while keeping the collection flat for easy querying and pagination.
+   This rule grants each user access only to their own reflections. It uses `resource.data` to check the existing document on reads, updates, and deletes, and `request.resource.data` to validate the incoming document on creation. This ensures security while allowing users to save new reflections.
+4. In **Firestore Database → Indexes**, create a new composite index for the `reflections` collection. The application's queries require an index on the `userId` field (ascending) and the `createdAt` field (descending). The console will often provide a direct link to create this index when the error first appears.
 
