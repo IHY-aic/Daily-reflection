@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -195,21 +195,19 @@ function setupReflectionsListener(date) {
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
     const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+    const q = query(
+        reflectionsRef,
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp),
+        orderBy('createdAt', 'desc')
+    );
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
-        const dayDocs = querySnapshot.docs
-            .filter(doc => {
-                const createdAtMillis = getMillis(doc.data().createdAt);
-                return createdAtMillis >= startTimestamp.toMillis() &&
-                       createdAtMillis <= endTimestamp.toMillis();
-            })
-            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
-
-        if (dayDocs.length === 0) {
+        if (querySnapshot.empty) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
-            dayDocs.forEach(renderReflectionDoc);
+            querySnapshot.forEach(renderReflectionDoc);
         }
     }, (error) => {
         console.error("Error with reflections listener: ", error);
@@ -237,10 +235,10 @@ function setupAllReflectionsListener() {
     reflectionsList.innerHTML = 'Loading...';
 
     const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+    const q = query(reflectionsRef, orderBy('createdAt', 'desc'));
 
-    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
-        allReflections = querySnapshot.docs
-            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+        allReflections = querySnapshot.docs;
         if (allReflections.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
             paginationDiv.innerHTML = '';
@@ -311,7 +309,7 @@ showAllButton.addEventListener('click', () => {
 
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
-reflectionForm.addEventListener('submit', (e) => {
+reflectionForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const didWell = document.getElementById('didWell').value;
@@ -319,23 +317,27 @@ reflectionForm.addEventListener('submit', (e) => {
     const improveTomorrow = document.getElementById('improveTomorrow').value;
     const user = auth.currentUser;
 
-    if (user) {
-            addDoc(collection(db, 'users', user.uid, 'reflections'), {
-                didWell,
-                didPoorly,
-                improveTomorrow,
-                createdAt: Timestamp.now()
-            }).then(async () => {
-                console.log("Reflection saved!");
-                reflectionForm.reset();
-                const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
-                localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
-                window.location.href = 'summary.html';
-            }).catch((error) => {
-                console.error("Error adding document: ", error);
-                alert('Failed to save reflection.');
-            });
-        }
+    if (!user) {
+        alert('You must be logged in to save reflections.');
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, 'users', user.uid, 'reflections'), {
+            didWell,
+            didPoorly,
+            improveTomorrow,
+            createdAt: Timestamp.now()
+        });
+        console.log("Reflection saved!");
+        reflectionForm.reset();
+        const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
+        localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
+        window.location.href = 'summary.html';
+    } catch (error) {
+        console.error("Error adding document: ", error);
+        alert('Failed to save reflection.');
+    }
 });
 
 reflectionsList.addEventListener('click', async (e) => {
