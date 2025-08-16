@@ -538,10 +538,9 @@ async function downloadReflectionsAsImages(data) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, '#fdfbfb');
-        gradient.addColorStop(1, '#ebedee');
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#f5f7fa');
+        gradient.addColorStop(1, '#c3cfe2');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
 
