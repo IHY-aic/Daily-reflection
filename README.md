@@ -12,7 +12,9 @@ This simple web app lets you record daily reflections using Firebase Authenticat
    ```
 
 3. Replace the placeholder values in `firebaseConfig.js` with your Firebase project's configuration (API key, auth domain, etc.).
-4. Keep `firebaseConfig.js` out of version control – it is already listed in `.gitignore` so your credentials stay private.
+4. Keep `firebaseConfig.js` out of version control – it is already listed in `.gitignore` so your credentials stay private. If you accidentally commit a secret, **delete it from the repo and rotate the key**.
+
+If you want to use Gemini-powered AI feedback during development, also set `geminiApiKey` in `firebaseConfig.js` or provide a `GEMINI_API_KEY` environment secret at deploy time. Never commit the actual Gemini API key to Git.
 
 ## Running
 
