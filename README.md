@@ -18,7 +18,7 @@ If you want to use Gemini-powered AI feedback during development, also set `gemi
 
 ## Running
 
-Serve the folder with a static server (e.g. `npx serve .`) and open `index.html` to enter a new reflection. Use `reflections.html` to browse past entries, paginate through older reflections, or download them in JSON, Markdown, HTML, CSV, or plain‑text formats.
+Serve the folder with a static server (e.g. `npx serve .`) and open `index.html` to enter a new reflection. Use `reflections.html` to browse past entries, paginate through older reflections, or download them in JSON, Markdown, HTML, CSV, plain‑text, or PNG image formats.
 
 ## Firebase console configuration
 
@@ -38,5 +38,7 @@ To use authentication and Firestore in your own project:
      }
    }
    ```
+
+   This structure scales well for many users because each user only listens to their own subcollection and rules naturally enforce per-user access. Using a different rule (for example, a top-level `reflections` collection) will cause Firestore to reject requests with "Missing or insufficient permissions" because the paths no longer match.
 
    This structure scales well for many users because each user only listens to their own subcollection and rules naturally enforce per-user access. Using a different rule (for example, a top-level `reflections` collection) will cause Firestore to reject requests with "Missing or insufficient permissions" because the paths no longer match.

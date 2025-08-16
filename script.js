@@ -287,9 +287,82 @@ function setupAllReflectionsListener() {
     if (unsubscribeFromReflections) {
         unsubscribeFromReflections();
     }
+
     reflectionsList.innerHTML = 'Loading...';
 
     const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
+        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        if (allReflections.length === 0) {
+            reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
+        } else {
+            renderPage(1);
+        }
+    }, (error) => {
+        console.error("Error with reflections listener: ", error);
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
+    });
+}
+
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
+    const reflectionEl = document.createElement('div');
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
+
+    reflectionEl.classList.add('reflection-card');
+    reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
+        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
+        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
+    `;
+    reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
@@ -441,6 +514,10 @@ if (downloadButton) {
                 return;
             }
             const format = downloadFormatSelect ? downloadFormatSelect.value : 'json';
+            if (format === 'png') {
+                await downloadReflectionsAsImages(data);
+                return;
+            }
             const { content, mime, ext } = formatReflections(data, format);
             const blob = new Blob([content], { type: mime });
             const url = URL.createObjectURL(blob);
@@ -484,6 +561,66 @@ function formatReflections(data, format) {
             return { content: JSON.stringify(data, null, 2), mime: 'application/json', ext: 'json' };
         }
     }
+}
+
+async function downloadReflectionsAsImages(data) {
+    for (const r of data) {
+        const canvas = document.createElement('canvas');
+        const width = 800;
+        const height = 400;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#fdfbfb');
+        gradient.addColorStop(1, '#ebedee');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = '#333';
+        ctx.font = '20px sans-serif';
+        let y = 40;
+        y = drawWrappedText(ctx, `Date: ${r.createdAt}`, 40, y, width - 80, 24);
+        y += 10;
+        y = drawWrappedText(ctx, `Did well: ${r.didWell}`, 40, y, width - 80, 24);
+        y += 10;
+        y = drawWrappedText(ctx, `Did poorly: ${r.didPoorly}`, 40, y, width - 80, 24);
+        y += 10;
+        y = drawWrappedText(ctx, `Improve tomorrow: ${r.improveTomorrow}`, 40, y, width - 80, 24);
+        if (r.feedback) {
+            y += 10;
+            drawWrappedText(ctx, `AI Feedback: ${r.feedback}`, 40, y, width - 80, 24);
+        }
+
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        const datePart = r.createdAt.split('T')[0];
+        a.download = `reflection-${datePart}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+            ctx.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    ctx.fillText(line, x, y);
+    return y + lineHeight;
 }
 
 async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
