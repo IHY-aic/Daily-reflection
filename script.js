@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
@@ -30,6 +30,8 @@ const emailPasswordSignupForm = document.getElementById('email-password-signup')
 const showSignupLink = document.getElementById('show-signup');
 const showLoginLink = document.getElementById('show-login');
 const logoutButton = document.getElementById('logout');
+const resetPasswordLink = document.getElementById('reset-password');
+const changePasswordButton = document.getElementById('change-password');
 const userEmailElement = document.getElementById('user-email');
 const calendarContainer = document.getElementById('calendar-container');
 const calendarGrid = document.getElementById('calendar-grid');
@@ -181,6 +183,24 @@ emailPasswordLoginForm.addEventListener('submit', async (e) => {
     }
 });
 
+if (resetPasswordLink) {
+    resetPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Please enter your email address first.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Password reset email sent.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert(`Failed to send reset email: ${error.message}`);
+        }
+    });
+}
+
 
 // Logout
 logoutButton.addEventListener('click', () => {
@@ -190,6 +210,28 @@ logoutButton.addEventListener('click', () => {
         console.error('Logout error:', error);
     });
 });
+
+if (changePasswordButton) {
+    changePasswordButton.addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user || !user.email) {
+            alert('You must be logged in with an email account to change password.');
+            return;
+        }
+        const currentPassword = prompt('Enter current password');
+        const newPassword = prompt('Enter new password');
+        if (!currentPassword || !newPassword) return;
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+            alert('Password updated successfully.');
+        } catch (error) {
+            console.error('Change password error:', error);
+            alert(`Failed to change password: ${error.message}`);
+        }
+    });
+}
 
 // Auth State Observer
 let unsubscribeFromReflections = null;
@@ -362,61 +404,6 @@ if (showAllButton && calendarContainer) {
             setupReflectionsListener(selectedDate);
         }
     });
-}
-
-    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
-        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
-        if (allReflections.length === 0) {
-            reflectionsList.innerHTML = '<p>No reflections found.</p>';
-            paginationDiv.innerHTML = '';
-        } else {
-            renderPage(1);
-        }
-    }, (error) => {
-        console.error("Error with reflections listener: ", error);
-        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
-    });
-}
-
-function renderReflectionDoc(docSnap) {
-    const reflection = docSnap.data();
-    const reflectionEl = document.createElement('div');
-    const rawCreatedAt = reflection.createdAt;
-    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
-    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
-
-    reflectionEl.classList.add('reflection-card');
-    reflectionEl.innerHTML = `
-        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
-        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
-        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
-        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
-        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
-        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
-    `;
-    reflectionsList.appendChild(reflectionEl);
-}
-
-function renderPage(page) {
-    currentPage = page;
-    reflectionsList.innerHTML = '';
-    const start = (page - 1) * perPage;
-    const pageDocs = allReflections.slice(start, start + perPage);
-    pageDocs.forEach(renderReflectionDoc);
-    renderPagination();
-}
-
-function renderPagination() {
-    paginationDiv.innerHTML = '';
-    const totalPages = Math.ceil(allReflections.length / perPage);
-    if (totalPages <= 1) return;
-    for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-        btn.addEventListener('click', () => renderPage(i));
-        paginationDiv.appendChild(btn);
-    }
 }
 
 if (showAllButton && calendarContainer) {
