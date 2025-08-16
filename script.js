@@ -171,6 +171,24 @@ if (resetPasswordLink) {
     });
 }
 
+if (resetPasswordLink) {
+    resetPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Please enter your email address first.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Password reset email sent.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert(`Failed to send reset email: ${error.message}`);
+        }
+    });
+}
+
 
 // Logout
 if (logoutButton) {
@@ -180,6 +198,28 @@ if (logoutButton) {
         }).catch((error) => {
             console.error('Logout error:', error);
         });
+    });
+}
+
+if (changePasswordButton) {
+    changePasswordButton.addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if (!user || !user.email) {
+            alert('You must be logged in with an email account to change password.');
+            return;
+        }
+        const currentPassword = prompt('Enter current password');
+        const newPassword = prompt('Enter new password');
+        if (!currentPassword || !newPassword) return;
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+            alert('Password updated successfully.');
+        } catch (error) {
+            console.error('Change password error:', error);
+            alert(`Failed to change password: ${error.message}`);
+        }
     });
 }
 
@@ -377,6 +417,39 @@ if (showAllButton && datePickerContainer) {
     });
 }
 
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
+
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
@@ -513,7 +586,6 @@ async function downloadReflectionsAsImages(data) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-
         const gradient = ctx.createLinearGradient(0, 0, width, height);
         gradient.addColorStop(0, '#f5f7fa');
         gradient.addColorStop(1, '#c3cfe2');
