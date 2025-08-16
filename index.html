@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="auth-container">
+    <div id="loading">Loading...</div>
+
+    <div id="auth-container" style="display: none;">
         <h2>Login</h2>
         <div id="login-buttons">
             <button id="google-login">Login with Google</button>
@@ -22,6 +24,9 @@
 
     <div id="signup-container" style="display: none;">
         <h2>Sign Up</h2>
+        <div id="signup-buttons">
+            <button id="google-signup">Sign up with Google</button>
+        </div>
         <form id="email-password-signup">
             <input type="email" id="signup-email" placeholder="Email" required>
             <input type="password" id="signup-password" placeholder="Password" required>
@@ -54,12 +59,17 @@
 
                     <button type="submit">Save Reflection</button>
                 </form>
-                <input type="date" id="calendar">
             </section>
 
             <section id="past-reflections">
                 <h2>Past Reflections</h2>
+                <div id="reflections-controls">
+                    <input type="date" id="calendar">
+                    <button id="show-all">Show All</button>
+                    <button id="download-reflections">Download</button>
+                </div>
                 <div id="reflections-list"></div>
+                <div id="pagination"></div>
             </section>
         </main>
     </div>
@@ -67,6 +77,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <!-- GEMINI_API_KEY is injected at deploy time -->
+    <script>window.GEMINI_API_KEY = "{{ GEMINI_API_KEY }}";</script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
