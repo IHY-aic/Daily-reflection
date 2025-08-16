@@ -287,7 +287,6 @@ function setupAllReflectionsListener() {
     if (unsubscribeFromReflections) {
         unsubscribeFromReflections();
     }
-
     reflectionsList.innerHTML = 'Loading...';
 
     const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
@@ -363,7 +362,6 @@ if (showAllButton && calendarContainer) {
         }
     });
 }
-
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
