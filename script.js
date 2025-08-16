@@ -406,6 +406,22 @@ if (showAllButton && calendarContainer) {
     });
 }
 
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
