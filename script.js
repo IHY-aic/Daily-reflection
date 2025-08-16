@@ -69,7 +69,8 @@ async function handleGoogleAuth() {
 function handleGoogleError(error) {
     console.error('Google login error:', error);
     if (error.code === 'auth/unauthorized-domain') {
-        alert('Google login failed: unauthorized domain. Please add this domain in your Firebase console.');
+        const host = window.location.host;
+        alert(`Google login failed: unauthorized domain. Please add ${host} to your Firebase console.`);
     } else {
         alert(`Google login failed: ${error.message}`);
     }
@@ -122,6 +123,14 @@ logoutButton.addEventListener('click', () => {
 
 // Auth State Observer
 let unsubscribeFromReflections = null;
+
+function getMillis(timestamp) {
+    if (!timestamp) return 0;
+    if (typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+    if (timestamp.seconds) return timestamp.seconds * 1000;
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? 0 : date.getTime();
+}
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -182,11 +191,11 @@ function setupReflectionsListener(date) {
         reflectionsList.innerHTML = '';
         const dayDocs = querySnapshot.docs
             .filter(doc => {
-                const createdAt = doc.data().createdAt;
-                return createdAt.toMillis() >= startTimestamp.toMillis() &&
-                       createdAt.toMillis() <= endTimestamp.toMillis();
+                const createdAtMillis = getMillis(doc.data().createdAt);
+                return createdAtMillis >= startTimestamp.toMillis() &&
+                       createdAtMillis <= endTimestamp.toMillis();
             })
-            .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis());
+            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
 
         if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
@@ -226,7 +235,7 @@ function setupAllReflectionsListener() {
     unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
         reflectionsList.innerHTML = '';
         const docs = querySnapshot.docs
-            .sort((a, b) => b.data().createdAt.toMillis() - a.data().createdAt.toMillis());
+            .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
 
         if (docs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
@@ -242,7 +251,9 @@ function setupAllReflectionsListener() {
 function renderReflectionDoc(doc) {
     const reflection = doc.data();
     const reflectionEl = document.createElement('div');
-    const createdAtDate = reflection.createdAt.toDate();
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
 
     reflectionEl.innerHTML = `
         <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
