@@ -181,6 +181,23 @@ if (resetPasswordLink) {
     });
 }
 
+if (resetPasswordLink) {
+    resetPasswordLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('Please enter your email address first.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('Password reset email sent.');
+        } catch (error) {
+            console.error('Reset password error:', error);
+            alert(`Failed to send reset email: ${error.message}`);
+        }
+    });
+}
 
 // Logout
 if (logoutButton) {
@@ -392,6 +409,94 @@ if (showAllButton && datePickerContainer) {
     });
 }
 
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
+        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        exportDocs = allReflections;
+        if (allReflections.length === 0) {
+            reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
+        } else {
+            renderPage(1);
+        }
+    }, (error) => {
+        console.error("Error with reflections listener: ", error);
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
+    });
+}
+
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
+    const reflectionEl = document.createElement('div');
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
+
+    reflectionEl.classList.add('reflection-card');
+    reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
+        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
+        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
+    `;
+    reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+if (showAllButton && datePickerContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            datePickerContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            datePickerContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
+
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {

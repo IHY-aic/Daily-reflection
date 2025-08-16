@@ -30,6 +30,7 @@ To use authentication and Firestore in your own project:
 2. In **Authentication → Settings**, add your site's domain (or `localhost` for local testing) to the **Authorized domains** list. Google login fails with `auth/unauthorized-domain` if the current host is missing here.
 3. In **Firestore Database**, create the database in production or test mode. Store reflections in a top-level `reflections` collection. Each document should include the signed-in user's ID in a `userId` field along with `didWell`, `didPoorly`, `improveTomorrow`, `feedback`, and a `createdAt` timestamp. A simple rule set is:
 
+
    ```
    rules_version = '2';
    service cloud.firestore {
