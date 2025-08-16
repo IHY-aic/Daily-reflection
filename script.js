@@ -416,7 +416,6 @@ async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
             const errText = await response.text();
             console.error('Gemini API error:', errText);
             return `Failed to fetch AI feedback: ${errText}`;
-
         }
         const data = await response.json();
         return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No feedback generated.';
