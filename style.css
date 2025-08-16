@@ -9,6 +9,14 @@ body {
     min-height: 100vh;
 }
 
+#loading {
+    text-align: center;
+}
+
+#auth-container, #signup-container, #app-container {
+    display: none;
+}
+
 #auth-container, #signup-container {
     text-align: center;
 }
@@ -30,6 +38,35 @@ header {
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 15px;
     margin-bottom: 30px;
+}
+
+nav {
+    display: flex;
+    gap: 15px;
+}
+
+nav a {
+    font-weight: 500;
+}
+
+.nav-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: #e0e0e0;
+    color: #333;
+    transition: background 0.3s, transform 0.2s;
+    text-decoration: none;
+}
+
+.nav-btn:hover {
+    background: #007bff;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.nav-btn.active {
+    background: #007bff;
+    color: #fff;
 }
 
 #user-info {
@@ -98,11 +135,20 @@ button:hover {
     margin-top: 30px;
 }
 
-#calendar {
+#reflections-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
 }
 
-#reflections-list div {
+#date-picker-container {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.reflection-card {
+    position: relative;
     background: #f9f9f9;
     padding: 20px;
     border-radius: 5px;
@@ -111,17 +157,62 @@ button:hover {
     transition: box-shadow 0.2s, transform 0.2s;
 }
 
-#reflections-list div:hover {
+.reflection-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transform: translateY(-2px);
 }
 
-#reflections-list h3 {
+.reflection-card h3 {
     margin-top: 0;
     color: #0056b3;
 }
 
-input[type="email"], input[type="password"], input[type="date"] {
+.delete-reflection {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    border: none;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delete-reflection:hover {
+    background-color: #c82333;
+}
+
+#pagination {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.page-btn {
+    margin: 0 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.page-btn.active {
+    background-color: #0056b3;
+}
+
+#ai-feedback {
+    margin-top: 20px;
+    background: #e9f5ff;
+    padding: 20px;
+    border-left: 5px solid #007bff;
+    border-radius: 5px;
+}
+
+#ai-feedback h3 {
+    margin-top: 0;
+    color: #0056b3;
+}
+
+input[type="email"], input[type="password"] {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
