@@ -11,5 +11,5 @@ export const firebaseConfig = {
   measurementId: "G-NQ80R8XTFD"
 };
 
-// Add your Gemini API key here for local development if not injected at runtime
-export const geminiApiKey = 'AIzaSyDgUo_jUOqZD8BE_iRn3xEBU2jp2eyxmrw';
+// Optional: include your Gemini API key if you want to enable AI feedback locally
+export const geminiApiKey = 'YOUR_GEMINI_API_KEY';

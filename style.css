@@ -9,6 +9,14 @@ body {
     min-height: 100vh;
 }
 
+#loading {
+    text-align: center;
+}
+
+#auth-container, #signup-container, #app-container {
+    display: none;
+}
+
 #auth-container, #signup-container {
     text-align: center;
 }

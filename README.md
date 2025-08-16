@@ -26,4 +26,18 @@ To use authentication and Firestore in your own project:
 
 1. In **Authentication → Sign-in method**, enable **Email/Password** and **Google** providers.
 2. In **Authentication → Settings**, add your site's domain (or `localhost` for local testing) to the **Authorized domains** list. Google login fails with `auth/unauthorized-domain` if the current host is missing here.
-3. In **Firestore Database**, create the database in production or test mode. Reflections are stored in a top-level `reflections` collection with a `userId` field. Configure your security rules so each user can read and write only documents where `userId` matches their UID.
+3. In **Firestore Database**, create the database in production or test mode. Store reflections in a `users/{uid}/reflections` subcollection. Each reflection document contains `didWell`, `didPoorly`, `improveTomorrow`, `feedback`, and `createdAt` fields. A simple rule set is:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId}/reflections/{reflectionId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+   This structure scales well for many users because each user only listens to their own subcollection and rules naturally enforce per-user access.
+

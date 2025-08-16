@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -22,6 +22,7 @@ getRedirectResult(auth).catch((error) => {
 const authContainer = document.getElementById('auth-container');
 const signupContainer = document.getElementById('signup-container');
 const appContainer = document.getElementById('app-container');
+const loadingContainer = document.getElementById('loading');
 const googleLoginButton = document.getElementById('google-login');
 const googleSignupButton = document.getElementById('google-signup');
 const emailPasswordLoginForm = document.getElementById('email-password-login');
@@ -144,6 +145,7 @@ function getMillis(timestamp) {
 }
 
 onAuthStateChanged(auth, (user) => {
+    if (loadingContainer) loadingContainer.style.display = 'none';
     if (user) {
         // User is signed in
         authContainer.style.display = 'none';
@@ -194,8 +196,7 @@ function setupReflectionsListener(date) {
     const startTimestamp = Timestamp.fromDate(startOfDay);
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
-    const reflectionsRef = collection(db, 'reflections');
-    const q = query(reflectionsRef, where('userId', '==', user.uid));
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         reflectionsList.innerHTML = '';
@@ -236,10 +237,9 @@ function setupAllReflectionsListener() {
 
     reflectionsList.innerHTML = 'Loading...';
 
-    const reflectionsRef = collection(db, 'reflections');
-    const q = query(reflectionsRef, where('userId', '==', user.uid));
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
 
-    unsubscribeFromReflections = onSnapshot(q, (querySnapshot) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
         if (allReflections.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
@@ -267,6 +267,7 @@ function renderReflectionDoc(docSnap) {
         <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
         <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
         <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
     `;
     reflectionsList.appendChild(reflectionEl);
 }
@@ -325,16 +326,16 @@ reflectionForm.addEventListener('submit', async (e) => {
     }
 
     try {
-        await addDoc(collection(db, 'reflections'), {
-            userId: user.uid,
+        const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
+        await addDoc(collection(db, 'users', user.uid, 'reflections'), {
             didWell,
             didPoorly,
             improveTomorrow,
+            feedback,
             createdAt: Timestamp.now()
         });
         console.log("Reflection saved!");
         reflectionForm.reset();
-        const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
         localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
         window.location.href = 'summary.html';
     } catch (error) {
@@ -353,7 +354,7 @@ reflectionsList.addEventListener('click', async (e) => {
                 return;
             }
             try {
-                await deleteDoc(doc(db, 'reflections', id));
+                await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
             } catch (error) {
                 console.error('Delete error:', error);
                 alert(`Failed to delete reflection: ${error.message}`);
@@ -366,15 +367,15 @@ downloadButton.addEventListener('click', async () => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-        const reflectionsRef = collection(db, 'reflections');
-        const q = query(reflectionsRef, where('userId', '==', user.uid));
-        const snapshot = await getDocs(q);
+        const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+        const snapshot = await getDocs(reflectionsRef);
         const data = snapshot.docs.map(snap => {
             const d = snap.data();
             return {
                 didWell: d.didWell,
                 didPoorly: d.didPoorly,
                 improveTomorrow: d.improveTomorrow,
+                feedback: d.feedback,
                 createdAt: new Date(getMillis(d.createdAt)).toISOString()
             };
         });
