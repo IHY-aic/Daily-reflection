@@ -163,7 +163,6 @@ onAuthStateChanged(auth, (user) => {
             calendarInput.value = today.toISOString().split('T')[0];
             setupReflectionsListener(today);
         }
-
     } else {
         // User is signed out
         authContainer.style.display = 'block';
@@ -316,6 +315,89 @@ if (showAllButton && calendarInput) {
         }
     });
 }
+
+function setupAllReflectionsListener() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    if (unsubscribeFromReflections) {
+        unsubscribeFromReflections();
+    }
+
+    reflectionsList.innerHTML = 'Loading...';
+
+    const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
+
+    unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
+        allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        if (allReflections.length === 0) {
+            reflectionsList.innerHTML = '<p>No reflections found.</p>';
+            paginationDiv.innerHTML = '';
+        } else {
+            renderPage(1);
+        }
+    }, (error) => {
+        console.error("Error with reflections listener: ", error);
+        reflectionsList.innerHTML = `<p>Error loading reflections: ${error.message}</p>`;
+    });
+}
+
+function renderReflectionDoc(docSnap) {
+    const reflection = docSnap.data();
+    const reflectionEl = document.createElement('div');
+    const rawCreatedAt = reflection.createdAt;
+    const tempDate = rawCreatedAt?.toDate ? rawCreatedAt.toDate() : new Date(rawCreatedAt);
+    const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
+
+    reflectionEl.classList.add('reflection-card');
+    reflectionEl.innerHTML = `
+        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
+        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
+        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
+        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
+        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
+        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
+    `;
+    reflectionsList.appendChild(reflectionEl);
+}
+
+function renderPage(page) {
+    currentPage = page;
+    reflectionsList.innerHTML = '';
+    const start = (page - 1) * perPage;
+    const pageDocs = allReflections.slice(start, start + perPage);
+    pageDocs.forEach(renderReflectionDoc);
+    renderPagination();
+}
+
+function renderPagination() {
+    paginationDiv.innerHTML = '';
+    const totalPages = Math.ceil(allReflections.length / perPage);
+    if (totalPages <= 1) return;
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.addEventListener('click', () => renderPage(i));
+        paginationDiv.appendChild(btn);
+    }
+}
+
+showAllButton.addEventListener('click', () => {
+    viewAll = !viewAll;
+    if (viewAll) {
+        calendarInput.style.display = 'none';
+        showAllButton.textContent = 'Show by Date';
+        setupAllReflectionsListener();
+    } else {
+        calendarInput.style.display = 'block';
+        showAllButton.textContent = 'Show All';
+        paginationDiv.innerHTML = '';
+        const dateParts = calendarInput.value.split('-').map(part => parseInt(part, 10));
+        const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        setupReflectionsListener(selectedDate);
+    }
+});
 
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
