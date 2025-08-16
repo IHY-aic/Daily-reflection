@@ -33,7 +33,9 @@ const userEmailElement = document.getElementById('user-email');
 const calendarInput = document.getElementById('calendar');
 const reflectionsList = document.getElementById('reflections-list');
 const showAllButton = document.getElementById('show-all');
-const aiFeedback = document.getElementById('ai-feedback');
+
+// Gemini API Key injected via repository secret GEMINI_API_KEY
+const GEMINI_API_KEY = window.GEMINI_API_KEY || '';
 
 let viewAll = false;
 
@@ -259,7 +261,6 @@ function renderReflectionDoc(doc) {
     reflectionEl.classList.add('reflection-card');
     reflectionEl.innerHTML = `
         <button class="delete-reflection" data-id="${doc.id}" title="Delete">&times;</button>
-
         <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
         <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
         <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
@@ -300,11 +301,12 @@ reflectionForm.addEventListener('submit', (e) => {
                 didPoorly,
                 improveTomorrow,
                 createdAt: Timestamp.now()
-            }).then(() => {
+            }).then(async () => {
                 console.log("Reflection saved!");
                 reflectionForm.reset();
-                showFeedback(didWell, didPoorly, improveTomorrow);
-                // No need to manually reload, onSnapshot will do it automatically
+                const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
+                localStorage.setItem('latestReflection', JSON.stringify({ didWell, didPoorly, improveTomorrow, feedback }));
+                window.location.href = 'summary.html';
             }).catch((error) => {
                 console.error("Error adding document: ", error);
                 alert('Failed to save reflection.');
@@ -326,13 +328,25 @@ reflectionsList.addEventListener('click', async (e) => {
     }
 });
 
-function showFeedback(didWell, didPoorly, improveTomorrow) {
-    aiFeedback.innerHTML = `
-        <h3>AI Feedback</h3>
-        <p><strong>Did well:</strong> ${didWell}</p>
-        <p><strong>Did poorly:</strong> ${didPoorly}</p>
-        <p><strong>Improve tomorrow:</strong> ${improveTomorrow}</p>
-    `;
-    aiFeedback.style.display = 'block';
-    aiFeedback.scrollIntoView({ behavior: 'smooth' });
+async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
+    if (!GEMINI_API_KEY) {
+        return 'No API key configured for AI feedback.';
+    }
+    const prompt = `Today's reflection:\n- Did well: ${didWell}\n- Did poorly: ${didPoorly}\n- Improve tomorrow: ${improveTomorrow}\nProvide encouraging feedback.`;
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [
+                    { parts: [{ text: prompt }] }
+                ]
+            })
+        });
+        const data = await response.json();
+        return data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No feedback generated.';
+    } catch (error) {
+        console.error('Gemini API error:', error);
+        return 'Failed to fetch AI feedback.';
+    }
 }
