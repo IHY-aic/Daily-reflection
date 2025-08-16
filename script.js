@@ -172,7 +172,6 @@ if (resetPasswordLink) {
     });
 }
 
-
 // Logout
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
@@ -380,6 +379,22 @@ if (showAllButton && datePickerContainer) {
     });
 }
 
+if (showAllButton && calendarContainer) {
+    showAllButton.addEventListener('click', () => {
+        viewAll = !viewAll;
+        if (viewAll) {
+            calendarContainer.style.display = 'none';
+            showAllButton.textContent = 'Show by Date';
+            setupAllReflectionsListener();
+        } else {
+            calendarContainer.style.display = 'block';
+            showAllButton.textContent = 'Show All';
+            paginationDiv.innerHTML = '';
+            renderCalendar();
+            setupReflectionsListener(selectedDate);
+        }
+    });
+}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
@@ -517,7 +532,6 @@ function downloadReflectionsAsImages(data) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-
         const gradient = ctx.createLinearGradient(0, 0, width, height);
         gradient.addColorStop(0, '#f5f7fa');
         gradient.addColorStop(1, '#c3cfe2');
