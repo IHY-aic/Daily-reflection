@@ -98,11 +98,19 @@ button:hover {
     margin-top: 30px;
 }
 
-#calendar {
+#reflections-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-bottom: 20px;
 }
 
-#reflections-list div {
+#calendar {
+    margin-bottom: 0;
+}
+
+.reflection-card {
+    position: relative;
     background: #f9f9f9;
     padding: 20px;
     border-radius: 5px;
@@ -111,12 +119,57 @@ button:hover {
     transition: box-shadow 0.2s, transform 0.2s;
 }
 
-#reflections-list div:hover {
+.reflection-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transform: translateY(-2px);
 }
 
-#reflections-list h3 {
+.reflection-card h3 {
+    margin-top: 0;
+    color: #0056b3;
+}
+
+.delete-reflection {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    border: none;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delete-reflection:hover {
+    background-color: #c82333;
+}
+
+#pagination {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.page-btn {
+    margin: 0 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.page-btn.active {
+    background-color: #0056b3;
+}
+
+#ai-feedback {
+    margin-top: 20px;
+    background: #e9f5ff;
+    padding: 20px;
+    border-left: 5px solid #007bff;
+    border-radius: 5px;
+}
+
+#ai-feedback h3 {
     margin-top: 0;
     color: #0056b3;
 }
