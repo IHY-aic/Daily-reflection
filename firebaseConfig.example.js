@@ -1,14 +1,14 @@
 // Copy this file to firebaseConfig.js and replace the values with your Firebase project configuration.
 // Keep firebaseConfig.js private and untracked (see .gitignore).
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
+  authDomain: "reflectionv1.firebaseapp.com",
+  projectId: "reflectionv1",
+  storageBucket: "reflectionv1.firebasestorage.app",
+  messagingSenderId: "932465743002",
+  appId: "1:932465743002:web:7e27fddd9636159a3bfb23",
+  measurementId: "G-NQ80R8XTFD"
 };
 
 // Optional: include your Gemini API key if you want to enable AI feedback locally
-export const geminiApiKey = 'YOUR_GEMINI_API_KEY';
+export const geminiApiKey = 'AIzaSyDgUo_jUOqZD8BE_iRn3xEBU2jp2eyxmrw';
