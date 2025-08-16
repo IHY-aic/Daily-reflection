@@ -1,6 +1,5 @@
 // Copy this file to firebaseConfig.js and replace the values with your Firebase project configuration.
-
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Keep firebaseConfig.js private and untracked (see .gitignore).
 export const firebaseConfig = {
   apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
   authDomain: "reflectionv1.firebaseapp.com",
@@ -11,5 +10,4 @@ export const firebaseConfig = {
   measurementId: "G-NQ80R8XTFD"
 };
 
-// Optional: include your Gemini API key if you want to enable AI feedback locally
-export const geminiApiKey = 'YOUR_GEMINI_API_KEY';
+export const geminiApiKey = 'AIzaSyDgUo_jUOqZD8BE_iRn3xEBU2jp2eyxmrw';
