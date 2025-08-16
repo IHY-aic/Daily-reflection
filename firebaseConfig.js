@@ -12,4 +12,4 @@ export const firebaseConfig = {
 };
 
 // Add your Gemini API key here for local development if not injected at runtime
-export const geminiApiKey = '';
+export const geminiApiKey = 'AIzaSyDgUo_jUOqZD8BE_iRn3xEBU2jp2eyxmrw';
