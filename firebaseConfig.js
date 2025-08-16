@@ -1,7 +1,7 @@
 // Copy this file to firebaseConfig.js and replace the values with your Firebase project configuration.
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDcBAeVyLfzRzn63DVGZcyUnjdw1sqTdhM",
   authDomain: "reflectionv1.firebaseapp.com",
   projectId: "reflectionv1",
