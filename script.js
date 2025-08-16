@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -52,6 +52,7 @@ let allReflections = [];
 let currentPage = 1;
 const perPage = 10;
 let selectedDate = new Date();
+let exportDocs = [];
 
 // Fallback: if auth state never resolves, show login after timeout
 const authFallback = setTimeout(() => {
@@ -171,25 +172,6 @@ if (resetPasswordLink) {
     });
 }
 
-if (resetPasswordLink) {
-    resetPasswordLink.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        if (!email) {
-            alert('Please enter your email address first.');
-            return;
-        }
-        try {
-            await sendPasswordResetEmail(auth, email);
-            alert('Password reset email sent.');
-        } catch (error) {
-            console.error('Reset password error:', error);
-            alert(`Failed to send reset email: ${error.message}`);
-        }
-    });
-}
-
-
 // Logout
 if (logoutButton) {
     logoutButton.addEventListener('click', () => {
@@ -198,28 +180,6 @@ if (logoutButton) {
         }).catch((error) => {
             console.error('Logout error:', error);
         });
-    });
-}
-
-if (changePasswordButton) {
-    changePasswordButton.addEventListener('click', async () => {
-        const user = auth.currentUser;
-        if (!user || !user.email) {
-            alert('You must be logged in with an email account to change password.');
-            return;
-        }
-        const currentPassword = prompt('Enter current password');
-        const newPassword = prompt('Enter new password');
-        if (!currentPassword || !newPassword) return;
-        try {
-            const credential = EmailAuthProvider.credential(user.email, currentPassword);
-            await reauthenticateWithCredential(user, credential);
-            await updatePassword(user, newPassword);
-            alert('Password updated successfully.');
-        } catch (error) {
-            console.error('Change password error:', error);
-            alert(`Failed to change password: ${error.message}`);
-        }
     });
 }
 
@@ -320,6 +280,7 @@ function setupReflectionsListener(date) {
                 return millis >= startTimestamp.toMillis() && millis <= endTimestamp.toMillis();
             })
             .sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        exportDocs = dayDocs;
         if (dayDocs.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
@@ -348,6 +309,7 @@ function setupAllReflectionsListener() {
 
     unsubscribeFromReflections = onSnapshot(reflectionsRef, (querySnapshot) => {
         allReflections = querySnapshot.docs.sort((a, b) => getMillis(b.data().createdAt) - getMillis(a.data().createdAt));
+        exportDocs = allReflections;
         if (allReflections.length === 0) {
             reflectionsList.innerHTML = '<p>No reflections found.</p>';
             paginationDiv.innerHTML = '';
@@ -433,23 +395,6 @@ if (showAllButton && calendarContainer) {
         }
     });
 }
-
-if (showAllButton && calendarContainer) {
-    showAllButton.addEventListener('click', () => {
-        viewAll = !viewAll;
-        if (viewAll) {
-            calendarContainer.style.display = 'none';
-            showAllButton.textContent = 'Show by Date';
-            setupAllReflectionsListener();
-        } else {
-            calendarContainer.style.display = 'block';
-            showAllButton.textContent = 'Show All';
-            paginationDiv.innerHTML = '';
-            renderCalendar();
-            setupReflectionsListener(selectedDate);
-        }
-    });
-}
 // Reflection Form
 const reflectionForm = document.getElementById('daily-reflection');
 if (reflectionForm) {
@@ -508,13 +453,18 @@ if (reflectionsList) {
 }
 
 if (downloadButton) {
-    downloadButton.addEventListener('click', async () => {
+    downloadButton.addEventListener('click', () => {
         const user = auth.currentUser;
-        if (!user) return;
+        if (!user) {
+            alert('You must be logged in to download reflections.');
+            return;
+        }
         try {
-            const reflectionsRef = collection(db, 'users', user.uid, 'reflections');
-            const snapshot = await getDocs(reflectionsRef);
-            const data = snapshot.docs.map(snap => {
+            if (exportDocs.length === 0) {
+                alert('No reflections to download.');
+                return;
+            }
+            const data = exportDocs.map(snap => {
                 const d = snap.data();
                 return {
                     didWell: d.didWell,
@@ -524,13 +474,9 @@ if (downloadButton) {
                     createdAt: new Date(getMillis(d.createdAt)).toISOString()
                 };
             });
-            if (data.length === 0) {
-                alert('No reflections to download.');
-                return;
-            }
             const format = downloadFormatSelect ? downloadFormatSelect.value : 'json';
             if (format === 'png') {
-                await downloadReflectionsAsImages(data);
+                downloadReflectionsAsImages(data);
                 return;
             }
             const { content, mime, ext } = formatReflections(data, format);
@@ -578,7 +524,7 @@ function formatReflections(data, format) {
     }
 }
 
-async function downloadReflectionsAsImages(data) {
+function downloadReflectionsAsImages(data) {
     for (const r of data) {
         const canvas = document.createElement('canvas');
         const width = 800;
