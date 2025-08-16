@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's Reflection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <div class="reflection-card">
+            <h2>Today's Reflection</h2>
+            <p><strong>Did well:</strong> <span id="did-well"></span></p>
+            <p><strong>Did poorly:</strong> <span id="did-poorly"></span></p>
+            <p><strong>Improve tomorrow:</strong> <span id="improve-tomorrow"></span></p>
+        </div>
+        <div id="ai-feedback"></div>
+        <a href="index.html">Back to reflections</a>
+    </div>
+    <!-- GEMINI_API_KEY is injected at deploy time -->
+    <script>window.GEMINI_API_KEY = "{{ GEMINI_API_KEY }}";</script>
+    <script type="module" src="summary.js"></script>
+</body>
+</html>
