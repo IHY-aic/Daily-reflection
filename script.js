@@ -276,24 +276,21 @@ function setupReflectionsListener(date) {
     const startTimestamp = Timestamp.fromDate(startOfDay);
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
-    const baseQuery = query(
+    const reflectionsQuery = query(
         collection(db, 'reflections'),
         where('userId', '==', user.uid),
+        where('createdAt', '>=', startTimestamp),
+        where('createdAt', '<=', endTimestamp),
         orderBy('createdAt', 'desc')
     );
 
-    unsubscribeFromReflections = onSnapshot(baseQuery, (snap) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsQuery, (snap) => {
         reflectionsList.innerHTML = '';
-        const dayDocs = snap.docs.filter((docSnap) => {
-            const createdAt = docSnap.data().createdAt;
-            const millis = getMillis(createdAt);
-            return millis >= startTimestamp.toMillis() && millis <= endTimestamp.toMillis();
-        });
-        exportDocs = dayDocs;
-        if (dayDocs.length === 0) {
+        exportDocs = snap.docs;
+        if (snap.empty) {
             reflectionsList.innerHTML = '<p>No reflections for this day.</p>';
         } else {
-            dayDocs.forEach(renderReflectionDoc);
+            snap.docs.forEach(renderReflectionDoc);
         }
     }, (error) => {
         console.error('Error with reflections listener: ', error);
