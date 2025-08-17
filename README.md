@@ -44,5 +44,5 @@ To use authentication and Firestore in your own project:
    ```
    This rule ensures that a user can only access the `reflections` subcollection that is under their own user document.
 
+4. In **Firestore Database → Indexes**, create a new composite index for the `reflections` collection. The application's queries require an index on the `userId` field (ascending) and the `createdAt` field (descending). The console will often provide a direct link to create this index when the error first appears.
 5. The application queries reflections sorted by date. If you see an error in the browser console asking for an index, follow the link provided in the error message to create the required index on the `reflections` collection. This will typically be a single-field index on `createdAt` (descending).
-
