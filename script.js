@@ -277,8 +277,7 @@ function setupReflectionsListener(date) {
     const endTimestamp = Timestamp.fromDate(endOfDay);
 
     const reflectionsQuery = query(
-        collection(db, 'reflections'),
-        where('userId', '==', user.uid),
+        collection(db, 'users', user.uid, 'reflections'),
         where('createdAt', '>=', startTimestamp),
         where('createdAt', '<=', endTimestamp),
         orderBy('createdAt', 'desc')
@@ -311,13 +310,12 @@ function setupAllReflectionsListener() {
 
     reflectionsList.innerHTML = 'Loading...';
 
-    const baseQuery = query(
-        collection(db, 'reflections'),
-        where('userId', '==', user.uid),
+    const reflectionsQuery = query(
+        collection(db, 'users', user.uid, 'reflections'),
         orderBy('createdAt', 'desc')
     );
 
-    unsubscribeFromReflections = onSnapshot(baseQuery, (snap) => {
+    unsubscribeFromReflections = onSnapshot(reflectionsQuery, (snap) => {
         allReflections = snap.docs;
         exportDocs = allReflections;
         if (allReflections.length === 0) {
@@ -407,8 +405,7 @@ if (reflectionForm) {
 
         try {
             const feedback = await fetchGeminiFeedback(didWell, didPoorly, improveTomorrow);
-            await addDoc(collection(db, 'reflections'), {
-                userId: user.uid,
+            await addDoc(collection(db, 'users', user.uid, 'reflections'), {
                 didWell,
                 didPoorly,
                 improveTomorrow,
@@ -440,7 +437,7 @@ if (reflectionsList) {
                     return;
                 }
                 try {
-                    await deleteDoc(doc(db, 'reflections', id));
+                    await deleteDoc(doc(db, 'users', user.uid, 'reflections', id));
                 } catch (error) {
                     console.error('Delete error:', error);
                     alert(`Failed to delete reflection: ${error.message}`);

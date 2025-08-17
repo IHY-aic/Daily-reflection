@@ -28,23 +28,21 @@ To use authentication and Firestore in your own project:
 
 1. In **Authentication → Sign-in method**, enable **Email/Password** and **Google** providers.
 2. In **Authentication → Settings**, add your site's domain (or `localhost` for local testing) to the **Authorized domains** list. Google login fails with `auth/unauthorized-domain` if the current host is missing here.
-3. In **Firestore Database**, create the database in production or test mode. Store reflections in a top-level `reflections` collection. Each document should include the signed-in user's ID in a `userId` field along with `didWell`, `didPoorly`, `improveTomorrow`, `feedback`, and a `createdAt` timestamp. A simple rule set is:
-
+3. In **Firestore Database**, create the database in production or test mode. The application uses a nested data structure where each user has their own `reflections` subcollection. You do not need to create the collections manually; the app will do this.
+4. Replace your Firestore security rules with the following to protect user data:
 
    ```
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /reflections/{reflectionId} {
-         // Users can only read, update, or delete their own reflections
-         allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-         // Users can only create reflections for themselves
-         allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+       // Allow users to read and write only their own reflections.
+       match /users/{userId}/reflections/{reflectionId} {
+         allow read, write: if request.auth.uid == userId;
        }
      }
    }
    ```
-
-   This rule grants each user access only to their own reflections. It uses `resource.data` to check the existing document on reads, updates, and deletes, and `request.resource.data` to validate the incoming document on creation. This ensures security while allowing users to save new reflections.
+   This rule ensures that a user can only access the `reflections` subcollection that is under their own user document.
 
 4. In **Firestore Database → Indexes**, create a new composite index for the `reflections` collection. The application's queries require an index on the `userId` field (ascending) and the `createdAt` field (descending). The console will often provide a direct link to create this index when the error first appears.
+5. The application queries reflections sorted by date. If you see an error in the browser console asking for an index, follow the link provided in the error message to create the required index on the `reflections` collection. This will typically be a single-field index on `createdAt` (descending).
