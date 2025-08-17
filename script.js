@@ -2,12 +2,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { firebaseConfig, geminiApiKey } from './firebaseConfig.js';
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 const provider = new GoogleAuthProvider();
 
 // Handle Google redirect results
@@ -43,12 +45,6 @@ const paginationDiv = document.getElementById('pagination');
 const feedbackModal = document.getElementById('feedback-modal');
 const feedbackText = document.getElementById('feedback-text');
 const closeModalButton = document.getElementById('close-modal');
-
-// Gemini API Key injected via secret or taken from firebaseConfig.js
-const GEMINI_API_KEY =
-    (window.GEMINI_API_KEY && window.GEMINI_API_KEY !== '{{ GEMINI_API_KEY }}')
-        ? window.GEMINI_API_KEY
-        : (geminiApiKey || '');
 
 let viewAll = false;
 let allReflections = [];
@@ -338,14 +334,36 @@ function renderReflectionDoc(docSnap) {
     const createdAtDate = isNaN(tempDate.getTime()) ? new Date() : tempDate;
 
     reflectionEl.classList.add('reflection-card');
-    reflectionEl.innerHTML = `
-        <button class="delete-reflection" data-id="${docSnap.id}" title="Delete">&times;</button>
-        <h3>Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}</h3>
-        <p><strong>What did I do well today?</strong><br>${reflection.didWell}</p>
-        <p><strong>What did I do poorly today?</strong><br>${reflection.didPoorly}</p>
-        <p><strong>What will I improve tomorrow?</strong><br>${reflection.improveTomorrow}</p>
-        ${reflection.feedback ? `<p><strong>AI Feedback:</strong><br>${reflection.feedback}</p>` : ''}
-    `;
+
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('delete-reflection');
+    deleteButton.dataset.id = docSnap.id;
+    deleteButton.title = 'Delete';
+    deleteButton.innerHTML = '&times;';
+    reflectionEl.appendChild(deleteButton);
+
+    const title = document.createElement('h3');
+    title.textContent = `Reflection from ${createdAtDate.toLocaleDateString()} at ${createdAtDate.toLocaleTimeString()}`;
+    reflectionEl.appendChild(title);
+
+    function createReflectionItem(label, text) {
+        const p = document.createElement('p');
+        const strong = document.createElement('strong');
+        strong.textContent = label;
+        p.appendChild(strong);
+        p.appendChild(document.createElement('br'));
+        p.appendChild(document.createTextNode(text));
+        return p;
+    }
+
+    reflectionEl.appendChild(createReflectionItem('What did I do well today?', reflection.didWell));
+    reflectionEl.appendChild(createReflectionItem('What did I do poorly today?', reflection.didPoorly));
+    reflectionEl.appendChild(createReflectionItem('What will I improve tomorrow?', reflection.improveTomorrow));
+
+    if (reflection.feedback) {
+        reflectionEl.appendChild(createReflectionItem('AI Feedback:', reflection.feedback));
+    }
+
     reflectionsList.appendChild(reflectionEl);
 }
 
@@ -522,31 +540,64 @@ function formatReflections(data, format) {
 function downloadReflectionsAsImages(data) {
     for (const r of data) {
         const canvas = document.createElement('canvas');
-        const width = 800;
-        const height = 400;
+        const width = 1200;
+        const height = 630; // 1.91:1 aspect ratio for social media
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
+        // Background Gradient
         const gradient = ctx.createLinearGradient(0, 0, width, height);
-        gradient.addColorStop(0, '#f5f7fa');
-        gradient.addColorStop(1, '#c3cfe2');
+        gradient.addColorStop(0, '#a1c4fd');
+        gradient.addColorStop(1, '#c2e9fb');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
 
+        // Card
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(40, 40, width - 80, height - 80, 20);
+        ctx.fill();
+        ctx.stroke();
+
+        let y = 120;
+        const x = 80;
+        const contentWidth = width - 160;
+
+        // Title
+        ctx.fillStyle = '#6a5af9';
+        ctx.font = 'bold 48px Poppins';
+        ctx.textAlign = 'center';
+        ctx.fillText('Daily Reflection', width / 2, y);
+        y += 80;
+
+        // Date
         ctx.fillStyle = '#333';
-        ctx.font = '20px sans-serif';
-        let y = 40;
-        y = drawWrappedText(ctx, `Date: ${r.createdAt}`, 40, y, width - 80, 24);
-        y += 10;
-        y = drawWrappedText(ctx, `Did well: ${r.didWell}`, 40, y, width - 80, 24);
-        y += 10;
-        y = drawWrappedText(ctx, `Did poorly: ${r.didPoorly}`, 40, y, width - 80, 24);
-        y += 10;
-        y = drawWrappedText(ctx, `Improve tomorrow: ${r.improveTomorrow}`, 40, y, width - 80, 24);
+        ctx.font = '300 24px Poppins';
+        ctx.textAlign = 'left';
+        const date = new Date(r.createdAt);
+        ctx.fillText(date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), x, y);
+        y += 60;
+
+
+        // Content
+        function drawSection(title, text) {
+            ctx.font = 'bold 28px Poppins';
+            ctx.fillStyle = '#6a5af9';
+            y = drawWrappedText(ctx, title, x, y, contentWidth, 36);
+            ctx.font = '400 24px Poppins';
+            ctx.fillStyle = '#333';
+            y = drawWrappedText(ctx, text, x, y, contentWidth, 32);
+            y += 20;
+        }
+
+        drawSection('What I did well:', r.didWell);
+        drawSection('What I did poorly:', r.didPoorly);
+        drawSection('How I\'ll improve:', r.improveTomorrow);
         if (r.feedback) {
-            y += 10;
-            drawWrappedText(ctx, `AI Feedback: ${r.feedback}`, 40, y, width - 80, 24);
+            drawSection('AI Feedback:', r.feedback);
         }
 
         const url = canvas.toDataURL('image/png');
@@ -580,32 +631,12 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 }
 
 async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
-    if (!GEMINI_API_KEY) {
-        return 'No API key configured for AI feedback.';
-    }
-    const prompt = `You are an encouraging and concise reflection coach. Based on the user's answers:\n- Did well: ${didWell}\n- Did poorly: ${didPoorly}\n- Improve tomorrow: ${improveTomorrow}\nRespond with constructive feedback.`;
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [{ text: prompt }]
-                    }
-                ]
-            })
-        });
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error('Gemini API error:', errText);
-            return `Failed to fetch AI feedback: ${errText}`;
-        }
-        const data = await response.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'No feedback generated.';
+        const getFeedback = httpsCallable(functions, 'getFeedback');
+        const result = await getFeedback({ didWell, didPoorly, improveTomorrow });
+        return result.data.feedback;
     } catch (error) {
-        console.error('Gemini API error:', error);
-        return `Failed to fetch AI feedback: ${error.message}`;
+        console.error('Error calling getFeedback cloud function:', error);
+        return `Failed to get AI feedback: ${error.message}`;
     }
 }
