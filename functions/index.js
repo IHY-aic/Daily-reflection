@@ -33,7 +33,7 @@ exports.getFeedback = functions.https.onCall(async (data, context) => {
 Respond with constructive feedback.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-latest" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
