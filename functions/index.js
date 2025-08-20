@@ -5,21 +5,16 @@ const cors = require("cors")({origin: true});
 
 admin.initializeApp();
 
-// Get Gemini API key from environment variables
-const geminiApiKey = functions.config().gemini?.key;
-let genAI;
-if (geminiApiKey) {
-  genAI = new GoogleGenAI({ apiKey: geminiApiKey });
-} else {
-  console.error("Gemini API key not found. Please set the gemini.key environment variable.");
-}
-
 exports.getFeedback = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
-    if (!genAI) {
-      res.status(500).send("Gemini API client not initialized. Check function logs for details.");
+    const geminiApiKey = functions.config().gemini?.key;
+    if (!geminiApiKey) {
+      console.error("Gemini API key not configured.");
+      res.status(500).send({ error: "Gemini API key not configured." });
       return;
     }
+    const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
+
 
     if (!req.headers.authorization || !req.headers.authorization.startsWith("Bearer ")) {
       res.status(403).send("Unauthorized");
