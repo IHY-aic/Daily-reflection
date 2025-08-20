@@ -227,10 +227,10 @@ onAuthStateChanged(auth, (user) => {
     if (loadingContainer) loadingContainer.style.display = 'none';
     if (user) {
         // User is signed in
-        authContainer.style.display = 'none';
-        signupContainer.style.display = 'none';
-        appContainer.style.display = 'block';
-        userEmailElement.textContent = user.email;
+        if (authContainer) authContainer.style.display = 'none';
+        if (signupContainer) signupContainer.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'block';
+        if (userEmailElement) userEmailElement.textContent = user.email;
 
         if (datePicker && showAllButton && reflectionsList) {
             viewAll = false;
@@ -242,10 +242,10 @@ onAuthStateChanged(auth, (user) => {
 
     } else {
         // User is signed out
-        authContainer.style.display = 'block';
-        signupContainer.style.display = 'none';
-        appContainer.style.display = 'none';
-        userEmailElement.textContent = '';
+        if (authContainer) authContainer.style.display = 'block';
+        if (signupContainer) signupContainer.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'none';
+        if (userEmailElement) userEmailElement.textContent = '';
         // Unsubscribe from the listener when logged out
         if (unsubscribeFromReflections) {
             unsubscribeFromReflections();

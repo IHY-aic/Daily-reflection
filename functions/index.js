@@ -1,12 +1,12 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 admin.initializeApp();
 
 // Get Gemini API key from environment variables
 const geminiApiKey = functions.config().gemini.key;
-const genAI = new GoogleGenerativeAI(geminiApiKey);
+const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
 exports.getFeedback = functions.https.onCall(async (data, context) => {
   // Check if the user is authenticated
@@ -33,7 +33,7 @@ exports.getFeedback = functions.https.onCall(async (data, context) => {
 Respond with constructive feedback.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
