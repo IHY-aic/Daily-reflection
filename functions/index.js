@@ -6,7 +6,8 @@ admin.initializeApp();
 
 // Get Gemini API key from environment variables
 const geminiApiKey = functions.config().gemini.key;
-const genAI = new GoogleGenAI(geminiApiKey);
+const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
+
 
 exports.getFeedback = functions.https.onCall(async (data, context) => {
   // Check if the user is authenticated
