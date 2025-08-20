@@ -1,8 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential, getIdToken } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, deleteDoc, Timestamp, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
+import { getFunctions } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 import { firebaseConfig } from './firebaseConfig.js';
 
 // Initialize Firebase
@@ -631,10 +631,29 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 }
 
 async function fetchGeminiFeedback(didWell, didPoorly, improveTomorrow) {
+    const user = auth.currentUser;
+    if (!user) {
+        return "You must be logged in to get feedback.";
+    }
+
     try {
-        const getFeedback = httpsCallable(functions, 'getFeedback');
-        const result = await getFeedback({ didWell, didPoorly, improveTomorrow });
-        return result.data.feedback;
+        const token = await getIdToken(user);
+        const response = await fetch("https://us-central1-reflectionv1.cloudfunctions.net/getFeedback", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ didWell, didPoorly, improveTomorrow })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server responded with ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data.feedback;
     } catch (error) {
         console.error('Error calling getFeedback cloud function:', error);
         return `Failed to get AI feedback: ${error.message}`;
